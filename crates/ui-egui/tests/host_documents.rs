@@ -78,3 +78,30 @@ fn without_a_host_new_and_open_are_the_editors_as_upstream_has_them() {
         assert!(has_button(&h, label), "{label} is offered");
     }
 }
+
+#[test]
+fn the_start_dialog_and_the_command_search_offer_no_other_workbook_to_a_host_that_opens_them() {
+    let mut results = vec![];
+    for hosted in [false, true] {
+        let mut h = harness(Services { host_owns_documents: hosted, ..Default::default() });
+
+        // The Start dialog (a new workbook, the recent files, Open) is the editor's start page: not for a host.
+        h.state_mut().open_dialog("start", json!({}));
+        h.run_steps(3);
+        let started = h.state().dialog.as_ref().map(|d| d.name().to_string()).as_deref() == Some("start");
+        assert_eq!(started, !hosted, "the Start dialog, hosted {hosted}");
+        h.state_mut().dialog = None;
+
+        // The command search lists commands by name, New, Open and Close among them (their ids start with `file.`).
+        h.state_mut().open_dialog("commandSearch", json!({}));
+        if let Some(d) = h.state_mut().dialog.as_mut() {
+            d.search = "file.".into();
+        }
+        h.run_steps(4);
+        let listed = h.query_all(egui_kittest::kittest::By::new().role(egui::accesskit::Role::Button)).count();
+        results.push(listed);
+    }
+    // New, Open and Close are three of the commands of the File menu: three buttons fewer for a host.
+    assert!(results[0] > results[1], "the command search lists fewer commands to a host: {results:?}");
+    assert_eq!(results[0] - results[1], 3, "exactly New, Open and Close: {results:?}");
+}

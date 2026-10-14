@@ -2067,11 +2067,15 @@ fn command_search(app: &mut SheetApp, ui: &mut egui::Ui, d: &mut Dialog, confirm
     let r = ui.add(egui::TextEdit::singleline(&mut d.search).desired_width(480.0).hint_text("Type a command, e.g. freeze, chart, bold…"));
     r.request_focus();
     let q = d.search.to_ascii_lowercase();
+    // //// Neoffice — no New, Open or Close to find when the hosting page opens the workbooks (`run` refuses them).
+    let hosted = app.services.host_owns_documents;
     let cmds: Vec<(String, String, String)> = app
         .session
         .commands()
         .into_iter()
         .filter(|c| c.enabled)
+        // //// Neoffice — see `hosted` above: the commands a host keeps for itself are not listed.
+        .filter(|c| !(hosted && crate::hidden_from_a_host(c.id)))
         .filter(|c| q.is_empty() || c.label.to_ascii_lowercase().contains(&q) || c.id.to_ascii_lowercase().contains(&q))
         .map(|c| (c.id.to_string(), c.label.to_string(), c.menu.join(" › ")))
         .take(40)

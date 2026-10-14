@@ -256,6 +256,12 @@ pub struct SheetApp {
     pub started: f64,
 }
 
+// //// Neoffice — added: the commands a hosting page that opens the workbooks does not leave to the editor: they bring
+// another workbook in or close the page's. `run` refuses them, and the command search does not list them.
+pub(crate) fn hidden_from_a_host(id: &str) -> bool {
+    matches!(id, "file.new" | "file.open" | "file.close")
+}
+
 impl SheetApp {
     pub fn new(session: Session, services: Services) -> SheetApp {
         SheetApp {
@@ -334,7 +340,7 @@ impl SheetApp {
         // //// Neoffice — a hosting page opens the workbooks: what would bring another one in or close this one is
         // refused, or the person would be shown a workbook the page knows nothing about. The page's own file
         // arrives through the inbox below, which lifts the guard for it.
-        if self.services.host_owns_documents && !self.host_switch_allowed && matches!(id, "file.new" | "file.open" | "file.close") {
+        if self.services.host_owns_documents && !self.host_switch_allowed && hidden_from_a_host(id) {
             return Err(self.ui.language.tr("This workbook is opened from the page that hosts the editor.").to_string());
         }
         if matches!(id, "file.save" | "file.saveAs" | "file.saveBytes") {
@@ -643,6 +649,8 @@ impl SheetApp {
                     dl(&name, &b);
                 }
             }
+            // //// Neoffice — no Start dialog (new workbook, recent files, Open) when the hosting page opens the workbooks.
+            "start" if self.services.host_owns_documents => {}
             // File › Options (`file.options`) and the File tab itself open the Backstage view.
             "options" => self.open_backstage(backstage::Page::Options),
             "backstage" => {
