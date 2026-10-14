@@ -97,13 +97,19 @@ pub fn title_bar(app: &mut SheetApp, ui: &mut Ui) {
             }
             let more = icon_button(ui, Icon::More, t.text_dim, "More commands", vec2(26.0, ch));
             egui::Popup::menu(&more).show(|ui| {
+                // //// Neoffice — no New or Open when the hosting page opens the workbooks.
+                let hosted = app.services.host_owns_documents;
                 for (label, id) in [
                     ("New Workbook", "file.new"),
                     ("Open…", "file.open"),
                     ("Save As…", "file.saveAs"),
                     ("Sort A to Z", "data.sortAscending"),
                     ("Calculate Now", "formulas.calculateNow"),
-                ] {
+                ]
+                // //// Neoffice — the entries that bring another workbook in, when the hosting page opens them.
+                .into_iter()
+                .filter(|(_, id)| !(hosted && matches!(*id, "file.new" | "file.open")))
+                {
                     if ui.button(label).clicked() {
                         app.run_or_alert(id, json!({}));
                     }

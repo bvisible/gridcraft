@@ -55,6 +55,11 @@ impl Page {
         Page::ALL.into_iter().find(|p| p.id().eq_ignore_ascii_case(id))
     }
 
+    // //// Neoffice — the pages that bring another workbook in: not offered when the hosting page opens them.
+    pub fn switches_document(self) -> bool {
+        matches!(self, Page::Home | Page::New | Page::Open)
+    }
+
     /// English label (navigation entry and page heading); translated when drawn.
     pub fn label(self) -> &'static str {
         match self {
@@ -132,6 +137,11 @@ struct Outcome {
 /// Draws the Backstage view in place of the ribbon, formula bar, grid and sheet tabs.
 pub fn show(app: &mut SheetApp, ui: &mut Ui) {
     let Some(mut bs) = app.backstage.take() else { return };
+    // //// Neoffice — a hosting page that opens the workbooks has no Home, New, Open or Close in the editor.
+    let hosted = app.services.host_owns_documents;
+    if hosted && bs.page.switches_document() {
+        bs.page = Page::Info;
+    }
     let ctx = ui.ctx().clone();
     // Esc inside a text field leaves the field; it closes the view only from outside one.
     let typing = ctx.text_edit_focused();
@@ -150,12 +160,16 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
                 out.close = true;
             }
             ui.add_space(10.0);
-            for page in [Page::Home, Page::New, Page::Open] {
+            // //// Neoffice — Home, New and Open are not offered when the hosting page opens the workbooks.
+            for page in [Page::Home, Page::New, Page::Open].into_iter().filter(|_| !hosted) {
                 if nav_item(ui, page.icon(), lang.tr(page.label()), bs.page == page, nav_text, nav_sel).clicked() {
                     out.page = Some(page);
                 }
             }
-            nav_separator(ui, nav_text);
+            // //// Neoffice — the separator belongs to the entries above.
+            if !hosted {
+                nav_separator(ui, nav_text);
+            }
             if nav_item(ui, Page::Info.icon(), lang.tr("Info"), bs.page == Page::Info, nav_text, nav_sel).clicked() {
                 out.page = Some(Page::Info);
             }
@@ -167,7 +181,8 @@ pub fn show(app: &mut SheetApp, ui: &mut Ui) {
                     out.page = Some(page);
                 }
             }
-            if nav_item(ui, Icon::Close, lang.tr("Close"), false, nav_text, nav_sel).clicked() {
+            // //// Neoffice — no Close either: the page closes the workbook.
+            if !hosted && nav_item(ui, Icon::Close, lang.tr("Close"), false, nav_text, nav_sel).clicked() {
                 // A cell still being edited is part of the workbook; Close keeps the unsaved prompt.
                 if app.commit_edit(0, 0, false, false) {
                     app.run_or_alert("file.close", json!({}));

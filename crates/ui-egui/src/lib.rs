@@ -188,6 +188,10 @@ pub struct Services {
     /// Web: hand PDF bytes to the browser's print flow directly (no download,
     /// no intermediate file) — opens the system print dialog on that PDF.
     pub print: Option<Box<dyn Fn(&[u8])>>,
+    // //// Neoffice — the page that frames the editor (the Drive of the Suite, Neodesk's window) opens the workbooks:
+    // File › Home, New and Open are not offered and what would bring another workbook in, or close this one, is
+    // refused. The page's own file still opens. Off, as upstream has it, for every other build.
+    pub host_owns_documents: bool,
 }
 
 /// Shared queue of files read asynchronously (browser file picker, drag and drop).
@@ -215,6 +219,9 @@ pub struct SheetApp {
     /// Dismissible info bar under the ribbon (open-time notices).
     pub notice: Option<Notice>,
     pub services: Services,
+    // //// Neoffice — set while the hosting page hands the editor a file, so that the guard of
+    // `Services::host_owns_documents` lets that one open through.
+    host_switch_allowed: bool,
     pub printing: printing::State,
     print_feedback_seen: Option<printing::Feedback>,
     /// Synthetic input from agents, one batch per frame (drags need several frames).
@@ -263,6 +270,8 @@ impl SheetApp {
             toast: None,
             notice: None,
             services,
+            // //// Neoffice — see `host_switch_allowed`.
+            host_switch_allowed: false,
             printing: Default::default(),
             print_feedback_seen: None,
             synthetic: Default::default(),
@@ -322,6 +331,12 @@ impl SheetApp {
 
     /// Runs an engine command (or a UI command) and handles UI requests it makes.
     pub fn run(&mut self, id: &str, params: Json) -> Result<Json, String> {
+        // //// Neoffice — a hosting page opens the workbooks: what would bring another one in or close this one is
+        // refused, or the person would be shown a workbook the page knows nothing about. The page's own file
+        // arrives through the inbox below, which lifts the guard for it.
+        if self.services.host_owns_documents && !self.host_switch_allowed && matches!(id, "file.new" | "file.open" | "file.close") {
+            return Err(self.ui.language.tr("This workbook is opened from the page that hosts the editor.").to_string());
+        }
         if matches!(id, "file.save" | "file.saveAs" | "file.saveBytes") {
             self.store_view_state();
         }
@@ -644,6 +659,8 @@ impl SheetApp {
         if !self.commit_edit(0, 0, false, false) {
             return;
         }
+        // //// Neoffice — Home, New and Open are the hosting page's to offer, not the editor's.
+        let page = if self.services.host_owns_documents && page.switches_document() { backstage::Page::Info } else { page };
         match &mut self.backstage {
             Some(b) => b.page = page,
             None => self.backstage = Some(backstage::Backstage::new(page)),
@@ -954,7 +971,11 @@ impl SheetApp {
             .unwrap_or_default();
         for (name, bytes) in arrived {
             let b64 = gridcraft_engine::io::base64_encode(&bytes);
-            match self.run("file.open", json!({"name": &name, "base64": &b64})) {
+            // //// Neoffice — the file the hosting page hands over is the one open the guard lets through.
+            self.host_switch_allowed = true;
+            let opened = self.run("file.open", json!({"name": &name, "base64": &b64}));
+            self.host_switch_allowed = false;
+            match opened {
                 // A file picked from File › Open (web) arrives here: show it, not the Backstage.
                 Ok(r) => {
                     self.backstage = None;

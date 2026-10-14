@@ -9,7 +9,10 @@
 //! strings in English until someone adds them.
 
 /// Neoffice's strings in French, English first.
-const FRENCH: &[(&str, &str)] = &[("Couldn't save {name}: {error}", "Impossible d'enregistrer {name} : {error}")];
+const FRENCH: &[(&str, &str)] = &[
+    ("Couldn't save {name}: {error}", "Impossible d'enregistrer {name} : {error}"),
+    ("This workbook is opened from the page that hosts the editor.", "Ce classeur est ouvert depuis la page qui héberge l'éditeur."),
+];
 
 /// Corrections of upstream's French catalog as it stands in v0.6.1: about 50 of its entries read as the
 /// French of ANOTHER English string ("File" is "Nom du fichier", "Hide Detail" is "Insérer les cellules

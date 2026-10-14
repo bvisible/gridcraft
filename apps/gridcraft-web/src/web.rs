@@ -95,7 +95,15 @@ struct WebShell {
 impl eframe::App for WebShell {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let dropped = ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
+        // //// Neoffice — a hosting page opens the workbooks: one dropped on the editor would be opened beside the
+        // one the page gave it (and saved to the page), so it is not taken.
+        let hosted = self.app.services.host_owns_documents;
         for f in dropped {
+            // //// Neoffice — a file dropped on an editor whose page opens the workbooks (see above).
+            if hosted {
+                log::info!("a file was dropped on an editor whose page opens the workbooks: not taken");
+                continue;
+            }
             let inbox = self.inbox.clone();
             let ctx = ctx.clone();
             wasm_bindgen_futures::spawn_local(async move {

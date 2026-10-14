@@ -63,6 +63,15 @@ carry their own `//// Neoffice — added file` header.
   community is not shown, for everyone who uses this build. The native menu's entry (`apps/gridcraft/src/native_menu.rs`)
   belongs to the desktop application, which this fork does not build: it stays as upstream has it.
 
+- **A hosting page opens the workbooks** (`Services::host_owns_documents`, set by `apps/gridcraft-web/src/host.rs`, so
+  only when a page frames the editor with `?host=parent`): the editor does not bring another workbook in beside the
+  page's, or close it. `file.new`, `file.open` and `file.close` are refused with a message (`run` in
+  `crates/ui-egui/src/lib.rs`), the File menu has no Home, New, Open or Close and a request for those pages shows Info
+  (`backstage.rs`, `open_backstage`), the "More commands" menu has no New or Open (`ribbon.rs`), and a file dropped on
+  the editor is not taken (`apps/gridcraft-web/src/web.rs`); the file the page hands over still opens (the inbox lifts
+  the guard for it). New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
+  `i18n/neoffice.rs`. Every other build behaves as before.
+
 ## Files that cannot carry a comment
 
 None so far.

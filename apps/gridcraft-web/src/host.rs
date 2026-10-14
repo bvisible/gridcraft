@@ -249,6 +249,8 @@ mod wire {
         /// Sends every file the editor would download to the parent instead, and hears the parent's
         /// files and its answers to the saves.
         pub fn connect(&self, services: &mut Services, inbox: Inbox, ctx: egui::Context) {
+            // //// Neoffice — the page that frames the editor opens the workbooks (`Services::host_owns_documents`).
+            services.host_owns_documents = true;
             self.listen(inbox, ctx);
             let bridge = self.clone();
             services.download = Some(Box::new(move |path: &str, bytes: &[u8]| bridge.post_save(path, bytes)));
