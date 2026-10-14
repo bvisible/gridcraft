@@ -59,6 +59,10 @@ carry their own `//// Neoffice — added file` header.
   cell first, worked). The cell editor now commits the draft and saves, as the text-box editor already
   did. Drop it when upstream fixes the same.
 
+- **No Discord link in the About dialog** (`crates/ui-egui/src/dialogs.rs`, one marked line): the link to upstream's
+  community is not shown, for everyone who uses this build. The native menu's entry (`apps/gridcraft/src/native_menu.rs`)
+  belongs to the desktop application, which this fork does not build: it stays as upstream has it.
+
 ## Files that cannot carry a comment
 
 None so far.
