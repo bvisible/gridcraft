@@ -163,6 +163,9 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
     let has_focus = focused == Some(id) || (mine && (ed.request_focus || focused.is_none()));
     let mut action: Option<(i64, i64, bool, bool)> = None;
     let mut cancel = false;
+    // //// Neoffice — Cmd/Ctrl+S (Shift: Save As) while a cell is being edited commits the draft and saves, as File › Save does. The grid's
+    // keyboard handler ignores every key while an edit is open, so the shortcut did nothing in the browser build, which has no menu bar.
+    let mut save: Option<&str> = None;
     if has_focus && mine {
         let (enter, tab, esc, alt_enter, cmd_enter, ctrl_shift_enter, shift) = ui.input_mut(|i| {
             let m = i.modifiers;
@@ -249,6 +252,16 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
         if ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, Key::F4)) {
             cycle_anchor(&mut ed);
         }
+        // //// Neoffice — see `save` above. Shift first: egui's `consume_key` ignores extra Shift.
+        save = ui.input_mut(|i| {
+            if i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, Key::S) {
+                Some("file.saveAs")
+            } else if i.consume_key(egui::Modifiers::COMMAND, Key::S) {
+                Some("file.save")
+            } else {
+                None
+            }
+        });
     }
     // The text widget.
     let refs = formula_refs(&ed.text);
@@ -408,6 +421,12 @@ pub fn editor_widget(app: &mut SheetApp, ui: &mut egui::Ui, id: egui::Id, font: 
         app.cancel_edit();
     } else if let Some((dr, dc, array, fill)) = action {
         app.commit_edit(dr, dc, array, fill);
+    }
+    // //// Neoffice — the draft is part of the workbook that gets saved; one that can't be committed (an invalid formula) keeps the edit open.
+    if let Some(command) = save
+        && app.commit_edit(0, 0, false, false)
+    {
+        app.run_or_alert(command, json!({}));
     }
 }
 

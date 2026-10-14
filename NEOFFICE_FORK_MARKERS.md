@@ -16,7 +16,7 @@ picture of what is ours and why.
 
 ## What the fork adds
 
-Three workflow files and two features, all marked in place. The workflow files are new files that
+Three workflow files and three features, all marked in place. The workflow files are new files that
 carry their own `//// Neoffice — added file` header.
 
 - `.github/workflows/neoffice-web.yml`: builds the browser version on a GitHub runner, started by
@@ -46,6 +46,12 @@ carry their own `//// Neoffice — added file` header.
 - **The French line of the bridge's message** ("Couldn't save {name}: {error}"): new file
   `crates/ui-egui/src/i18n/neoffice.rs`, which `Language::tr` falls back to after upstream's French
   catalog (two marked lines in `crates/ui-egui/src/i18n.rs`). Other languages show it in English.
+- **Cmd/Ctrl+S while a cell is being edited** (marked in `crates/ui-egui/src/formula_bar.rs`; tests in the
+  new file `crates/ui-egui/tests/save_while_editing.rs`): the grid's keyboard handler ignores every key
+  while an edit is open, and only the desktop app's menu bar carried the shortcut then, so in the browser
+  build Cmd+S did nothing while a cell was being typed (the title bar's Save button, which commits the
+  cell first, worked). The cell editor now commits the draft and saves, as the text-box editor already
+  did. Drop it when upstream fixes the same.
 
 ## Files that cannot carry a comment
 
