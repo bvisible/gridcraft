@@ -124,8 +124,8 @@ impl Language {
             Self::PtBr => pt::translate(text),
             Self::De => de::translate(text),
             Self::Cs => cs::translate(text),
-            // //// Neoffice — the strings we added are translated in `neoffice.rs`, after upstream's catalog: a merge never touches them.
-            Self::Fr => fr::translate(text).or_else(|| neoffice::french(text)),
+            // //// Neoffice — `neoffice.rs` corrects upstream's French where v0.6.1 has it wrong (asked first) and says the strings we added (asked after the catalog): a merge never touches them.
+            Self::Fr => neoffice::french_fix(text).or_else(|| fr::translate(text)).or_else(|| neoffice::french(text)),
         };
         translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))
     }

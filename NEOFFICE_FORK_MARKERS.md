@@ -46,6 +46,12 @@ carry their own `//// Neoffice — added file` header.
 - **The French line of the bridge's message** ("Couldn't save {name}: {error}"): new file
   `crates/ui-egui/src/i18n/neoffice.rs`, which `Language::tr` falls back to after upstream's French
   catalog (two marked lines in `crates/ui-egui/src/i18n.rs`). Other languages show it in English.
+- **Corrections of upstream's French catalog** (same file, `FRENCH_FIXES`, asked BEFORE the catalog): in
+  v0.6.1 about 50 entries of `i18n/fr.rs` read as the French of another English string ("File" is "Nom du
+  fichier", "Hide Detail" is "Insérer les cellules copiées"). Upstream fixed them in storytold/gridcraft
+  `c59e942` (12.10.2026); the table holds its 172 changed values (wrappings and wordings too), so
+  `fr.rs` stays untouched and a merge never conflicts with it. **Drop the table at the merge that brings
+  that commit** (the values are the same), keeping the hook line of `i18n.rs` for the strings we add.
 - **Cmd/Ctrl+S while a cell is being edited** (marked in `crates/ui-egui/src/formula_bar.rs`; tests in the
   new file `crates/ui-egui/tests/save_while_editing.rs`): the grid's keyboard handler ignores every key
   while an edit is open, and only the desktop app's menu bar carried the shortcut then, so in the browser
