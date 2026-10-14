@@ -16,8 +16,8 @@ picture of what is ours and why.
 
 ## What the fork adds
 
-Three workflow files, all new files that carry their own `//// Neoffice — added file` header. No
-file of upstream's is changed.
+Three workflow files and two features, all marked in place. The workflow files are new files that
+carry their own `//// Neoffice — added file` header.
 
 - `.github/workflows/neoffice-web.yml`: builds the browser version on a GitHub runner, started by
   hand, with the packaging script upstream's own release job runs. Upstream's workflows are
@@ -27,6 +27,25 @@ file of upstream's is changed.
 - `.github/workflows/neoffice-ci.yml`: runs upstream's own quality gate, `cargo xtask ci`, on a
   GitHub runner (by hand, or on a push that touches code), because the maintainer's Mac has too
   little disk to run it for every change.
+- **The host bridge of the browser build** (new file `apps/gridcraft-web/src/host.rs`; marked changes in
+  `apps/gridcraft-web/src/web.rs`, `apps/gridcraft-web/src/main.rs` and the web-sys features of
+  `apps/gridcraft-web/Cargo.toml`): the `postMessage` contract of a page that frames the editor
+  (`?host=parent`, same origin), the one upstream's GridCraft (its `main`, commit `6e2caa9`) and
+  PdfCraft already use, so one host page (the Drive of the Suite, NeoDesk's window) drives every Craft
+  editor: `gridcraft:ready`, `gridcraft:open` (a workbook to edit), `gridcraft:save` (every file the
+  editor would download), `gridcraft:dirty` and `gridcraft:failed`, plus `?author=` (the name that signs
+  notes and comments). Ours on top of upstream's: `gridcraft:saved` (`ok: false` marks the workbook
+  unsaved again and says why in the message bar; a parent that never answers leaves it saved, as
+  upstream's does), the same-origin check when the bridge starts (upstream's starts for any frame, then
+  posts to nobody when the parent is of another origin), and a file that could not be posted counts as a
+  refused save (upstream only logs it). Without `?host=parent` the editor behaves as before. What counts
+  as saved and what a refusal does is plain Rust, tested off wasm (`host.rs` is built for `cfg(test)` too).
+  At the next upstream merge `host.rs` is added on both sides: take upstream's and put back what is
+  marked `//// Neoffice`; in `web.rs`, `main.rs` and `Cargo.toml` take upstream's hunks, then adapt the
+  calls (`Bridge::requested`, `connect`, `ready`, `sync(app, ctx)`).
+- **The French line of the bridge's message** ("Couldn't save {name}: {error}"): new file
+  `crates/ui-egui/src/i18n/neoffice.rs`, which `Language::tr` falls back to after upstream's French
+  catalog (two marked lines in `crates/ui-egui/src/i18n.rs`). Other languages show it in English.
 
 ## Files that cannot carry a comment
 

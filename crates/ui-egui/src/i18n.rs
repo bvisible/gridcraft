@@ -17,6 +17,8 @@ mod ko;
 mod pt;
 mod ru;
 mod zh;
+// //// Neoffice — added module: our own interface strings, translated outside upstream's catalogs.
+mod neoffice;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -122,7 +124,8 @@ impl Language {
             Self::PtBr => pt::translate(text),
             Self::De => de::translate(text),
             Self::Cs => cs::translate(text),
-            Self::Fr => fr::translate(text),
+            // //// Neoffice — the strings we added are translated in `neoffice.rs`, after upstream's catalog: a merge never touches them.
+            Self::Fr => fr::translate(text).or_else(|| neoffice::french(text)),
         };
         translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))
     }

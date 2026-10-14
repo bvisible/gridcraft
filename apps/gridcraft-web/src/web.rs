@@ -25,6 +25,10 @@ pub fn start() {
         {
             create.instance_descriptor.backends = eframe::wgpu::Backends::GL;
         }
+        // //// Neoffice — `?host=parent`: a same-origin page framing GridCraft (the Drive of the Suite, NeoDesk's window) gives it the
+        // workbook to edit and stores what it saves (`host`). `None` unless the page asks and such a page frames this one.
+        let bridge = crate::host::Bridge::requested();
+        let app_bridge = bridge.clone();
         let result = eframe::WebRunner::new()
             .start(
                 canvas,
@@ -32,13 +36,19 @@ pub fn start() {
                 Box::new(move |cc| {
                     let inbox: Inbox = Inbox::default();
                     let mut session = Session::new();
-                    let q = query();
+                    // //// Neoffice — in host mode the parent sends the workbook to edit: no sample meanwhile.
+                    let q = if app_bridge.is_some() { String::new() } else { query() };
                     if let Some(name) = q.split(['?', '&']).find_map(|kv| kv.strip_prefix("sample=")) {
                         let _ = session.execute("file.new", serde_json::json!({"sample": name}));
                     } else if q.contains("sample") {
                         let _ = session.execute("file.new", serde_json::json!({"sample": "sales"}));
                     }
-                    let mut app = SheetApp::new(session, services(inbox.clone(), cc.egui_ctx.clone()));
+                    let mut services = services(inbox.clone(), cc.egui_ctx.clone());
+                    // //// Neoffice — the hosting page gets the saves and the exports instead of the browser, and sends the workbooks.
+                    if let Some(bridge) = &app_bridge {
+                        bridge.connect(&mut services, inbox.clone(), cc.egui_ctx.clone());
+                    }
+                    let mut app = SheetApp::new(session, services);
                     app.ui.system_theme = true;
                     // Follow the browser's language, except a CJK one: the web build has no system
                     // CJK fonts (none are bundled), so that interface would render as tofu.
@@ -50,10 +60,18 @@ pub fn start() {
                         app.ui.language = browser;
                     }
                     SheetApp::setup_context_for_language(&cc.egui_ctx, false, app.ui.language);
-                    Ok(Box::new(WebShell { app, inbox }))
+                    // //// Neoffice — the hosting page learns the editor listens; `?author=` names the user who signs notes and comments.
+                    if let Some(bridge) = &app_bridge {
+                        bridge.ready(&mut app);
+                    }
+                    Ok(Box::new(WebShell { app, inbox, bridge: app_bridge }))
                 }),
             )
             .await;
+        // //// Neoffice — a hosting page hears that the editor could not start (no WebGPU nor WebGL2, for example).
+        if let (Err(e), Some(bridge)) = (&result, &bridge) {
+            bridge.post_failed(&format!("{e:?}"));
+        }
         if let Some(el) = document.get_element_by_id(LOADING_ID) {
             match result {
                 Ok(()) => el.remove(),
@@ -70,6 +88,8 @@ fn query() -> String {
 struct WebShell {
     app: SheetApp,
     inbox: Inbox,
+    // //// Neoffice — the bridge to the hosting page, when there is one.
+    bridge: Option<crate::host::Bridge>,
 }
 
 impl eframe::App for WebShell {
@@ -98,6 +118,10 @@ impl eframe::App for WebShell {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.app.ui(ui);
+        // //// Neoffice — after each frame: what was handed to the hosting page counts as saved, its answers apply, it hears of unsaved changes.
+        if let Some(bridge) = &self.bridge {
+            bridge.sync(&mut self.app, ui.ctx());
+        }
     }
 }
 
