@@ -13,6 +13,9 @@ craft-ui = { git = "https://github.com/storytold/craft-libs", rev = "d27646a5f7c
 gridcraft-engine = { workspace = true }
 gridcraft-chart = { workspace = true }
 egui = { workspace = true }
+# //// Neoffice — the Nora assistant pane (nora_pane.rs): Nora's client core and its egui panel.
+craft-nora = { workspace = true }
+craft-nora-ui = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }

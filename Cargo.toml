@@ -55,6 +55,13 @@ skrifa = { version = "0.44", default-features = false, features = ["std"] }
 # Real font bytes for tests (Ubuntu Light, compiled into epaint).
 epaint_default_fonts = "0.36"
 
+# //// Neoffice — the Nora assistant pane (crates/ui-egui/src/nora_pane.rs), the one WordCraft has. Neoffice's
+# craft-libs fork carries Nora's client core and its egui panel; both depend on egui only (the same 0.36 as here),
+# so upstream's craft-libs types are not duplicated. The same revision as WordCraft's: to follow upstream's
+# craft-libs later, merge it into the fork and move this revision; nothing else changes.
+craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "8fee6abfbd33ae783a4d74bbcf005ae3ca986f84" }
+craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "8fee6abfbd33ae783a4d74bbcf005ae3ca986f84" }
+
 [workspace.lints.rust]
 unsafe_code = "forbid"
 

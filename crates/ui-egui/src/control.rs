@@ -197,6 +197,8 @@ pub fn handle(app: &mut SheetApp, ctx: &egui::Context, method: &str, p: &Json) -
                 ("app.language.set", "Interface Language", "{language: \"en\"|\"zh\"|\"ja\"|\"ko\"|\"ru\"|\"pt\"|\"de\"|\"cs\"} (alias: code)"),
                 ("app.language.english", "Interface Language: English", ""),
                 ("app.language.japanese", "Interface Language: Japanese", ""),
+                // //// Neoffice — the Nora assistant pane (nora_pane.rs).
+                ("ui.nora", "Nora Assistant Pane", "{on?: bool} (toggles without it) → {on}"),
             ] {
                 v.push(json!({"id": id, "label": label, "params": params, "enabled": true, "ui": true}));
             }

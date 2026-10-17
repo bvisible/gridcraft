@@ -14,12 +14,24 @@
 //! `?host=parent` (inside an `<iframe>`, with a parent page of the same origin) talks to that parent
 //! instead: it sends the workbook to open and stores what GridCraft saves (`host`), and `&author=<name>`
 //! names the user for notes and comments.
+// //// Neoffice — the Nora pane's flags, documented for the next reader; the connection is in nora.rs.
+//!
+//! `?nora` opens the Nora pane, connected with the page's own session at the page's own origin
+//! (`?nora=<origin>` names that origin, or a loopback one from a loopback page; any other origin only the
+//! page itself sets, in `window.gridcraftNora`); a page that offers `window.gridcraftNoraCall` makes
+//! Nora's calls itself and gets the pane the same way. The flags are read as URL parameters (flags.rs).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 // //// Neoffice — added module: the `postMessage` bridge to the page that frames the browser build (`?host=parent`, see host.rs).
 // Its decisions are plain Rust, built for the tests too so that they run off wasm.
 #[cfg(any(target_arch = "wasm32", test))]
 mod host;
+// //// Neoffice — added modules: the page's URL flags read as parameters (flags.rs) and the Nora pane's connection (nora.rs).
+// Their decisions are plain Rust, built for the tests too, as host.rs's.
+#[cfg(any(target_arch = "wasm32", test))]
+mod flags;
+#[cfg(any(target_arch = "wasm32", test))]
+mod nora;
 #[cfg(target_arch = "wasm32")]
 mod web;
 

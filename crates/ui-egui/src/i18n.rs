@@ -127,7 +127,11 @@ impl Language {
             // //// Neoffice — `neoffice.rs` corrects upstream's French where v0.6.1 has it wrong (asked first) and says the strings we added (asked after the catalog): a merge never touches them.
             Self::Fr => neoffice::french_fix(text).or_else(|| fr::translate(text)).or_else(|| neoffice::french(text)),
         };
-        translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))
+        // //// Neoffice — the strings we added (the Nora pane, the hosting page's messages) in the other languages, asked after their catalog.
+        let translated = translated.or_else(|| neoffice::added(self, text));
+        // //// Neoffice — a `context|label` key shows its label alone when it is translated too, not only when it falls back to English: upstream's French of c59e942 (our `neoffice.rs` fixes) writes three with their context, and File › Options read "Options|Général". Upstream: `translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`.
+        let shown = translated.unwrap_or(text);
+        if text.contains('|') { shown.rsplit_once('|').map_or(shown, |(_, label)| label) } else { shown }
     }
 }
 

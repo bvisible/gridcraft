@@ -488,8 +488,11 @@ mod tests {
         app.ui.language = Language::Fr;
         Ledger::default().settle(&mut app, &[], &[refusal("devis.xlsx", "quota exceeded")]);
         assert_eq!(notice(&app), Some("Impossible d'enregistrer devis.xlsx : quota exceeded"));
-        // A language without the line shows it in English.
+        // Every language of the interface has the line (`i18n/neoffice.rs` of the UI crate).
         app.ui.language = Language::De;
+        Ledger::default().settle(&mut app, &[], &[refusal("devis.xlsx", "quota exceeded")]);
+        assert_eq!(notice(&app), Some("devis.xlsx konnte nicht gespeichert werden: quota exceeded"));
+        app.ui.language = Language::En;
         Ledger::default().settle(&mut app, &[], &[refusal("devis.xlsx", "quota exceeded")]);
         assert_eq!(notice(&app), Some("Couldn't save devis.xlsx: quota exceeded"));
     }

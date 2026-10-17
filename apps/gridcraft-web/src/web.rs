@@ -5,6 +5,9 @@ use gridcraft_ui_egui::{Inbox, Services, SheetApp};
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::JsValue;
 
+// //// Neoffice — the page's URL flags (flags.rs) and the Nora pane's connection (nora.rs).
+use crate::{flags::Flags, nora};
+
 const CANVAS_ID: &str = "gridcraft_canvas";
 const LOADING_ID: &str = "gridcraft_loading";
 
@@ -20,7 +23,9 @@ pub fn start() {
             return;
         };
         let mut options = eframe::WebOptions::default();
-        if query().contains("webgl")
+        // //// Neoffice — the flags are URL parameters (flags.rs), not words of the query: `?nora=https://sample.example` opened the sample.
+        let flags = Flags::parse(&query());
+        if flags.webgl
             && let eframe::egui_wgpu::WgpuSetup::CreateNew(create) = &mut options.wgpu_options.wgpu_setup
         {
             create.instance_descriptor.backends = eframe::wgpu::Backends::GL;
@@ -36,17 +41,22 @@ pub fn start() {
                 Box::new(move |cc| {
                     let inbox: Inbox = Inbox::default();
                     let mut session = Session::new();
-                    // //// Neoffice — in host mode the parent sends the workbook to edit: no sample meanwhile.
-                    let q = if app_bridge.is_some() { String::new() } else { query() };
-                    if let Some(name) = q.split(['?', '&']).find_map(|kv| kv.strip_prefix("sample=")) {
+                    // //// Neoffice — in host mode the parent sends the workbook to edit: no sample meanwhile. The sample is the
+                    // `?sample` parameter (flags.rs).
+                    if let Some(name) = flags.sample.as_deref().filter(|_| app_bridge.is_none()) {
                         let _ = session.execute("file.new", serde_json::json!({"sample": name}));
-                    } else if q.contains("sample") {
-                        let _ = session.execute("file.new", serde_json::json!({"sample": "sales"}));
                     }
                     let mut services = services(inbox.clone(), cc.egui_ctx.clone());
                     // //// Neoffice — the hosting page gets the saves and the exports instead of the browser, and sends the workbooks.
                     if let Some(bridge) = &app_bridge {
                         bridge.connect(&mut services, inbox.clone(), cc.egui_ctx.clone());
+                    }
+                    // //// Neoffice — a page that asks for Nora (`?nora`) gets the pane, connected with the page's own session at its
+                    // own origin (nora.rs says which other origins a URL may name). The browser build keeps no setting, so the
+                    // host opens it. A host that makes the calls itself (`gridcraftNoraCall`, Neodesk) turns it on the same way.
+                    let nora = nora::requested(flags.nora.as_deref()).or_else(|| nora::offered().then(String::new));
+                    if let Some(origin) = &nora {
+                        nora::connect(&mut services, origin.clone(), cc.egui_ctx.clone());
                     }
                     let mut app = SheetApp::new(session, services);
                     app.ui.system_theme = true;
@@ -63,6 +73,12 @@ pub fn start() {
                     // //// Neoffice — the hosting page learns the editor listens; `?author=` names the user who signs notes and comments.
                     if let Some(bridge) = &app_bridge {
                         bridge.ready(&mut app);
+                    }
+                    // //// Neoffice — see `nora` above: the pane opens by itself when the page offers Nora.
+                    if nora.is_some()
+                        && let Err(e) = app.run("ui.nora", serde_json::json!({"on": true}))
+                    {
+                        log::error!("the Nora pane could not be opened: {e}");
                     }
                     Ok(Box::new(WebShell { app, inbox, bridge: app_bridge }))
                 }),

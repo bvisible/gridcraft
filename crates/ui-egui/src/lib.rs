@@ -24,6 +24,8 @@ pub mod i18n;
 pub mod icons;
 pub mod keymap;
 pub mod keytips;
+// //// Neoffice — added module: the Nora assistant pane, Neoffice's assistant built on craft-nora and craft-nora-ui (WordCraft's).
+pub mod nora_pane;
 pub mod outline;
 pub mod panes;
 pub mod paper_view;
@@ -75,6 +77,10 @@ pub struct UiState {
     /// [`INTERFACE_SCALE_MIN`]..=[`INTERFACE_SCALE_MAX`]; a malformed saved value reads as 100.
     #[serde(deserialize_with = "lenient_interface_scale")]
     pub interface_scale: u16,
+    // //// Neoffice — the Nora assistant pane (nora_pane.rs), off until the person turns it on, as in WordCraft.
+    /// File › Options › Assistant: show the Nora pane at the right of the window, kept between runs (the
+    /// `ui.nora` command). The browser build keeps no setting: it turns the pane on when the page offers Nora.
+    pub nora_pane: bool,
 }
 
 pub const INTERFACE_SCALE_MIN: u16 = 75;
@@ -105,6 +111,8 @@ impl Default for UiState {
             keytip_invoke: None,
             language: i18n::Language::En,
             interface_scale: 100,
+            // //// Neoffice — the Nora assistant pane is off by default.
+            nora_pane: false,
         }
     }
 }
@@ -194,10 +202,23 @@ pub struct Services {
     // File › Home, New and Open are not offered and what would bring another workbook in, or close this one, is
     // refused. The page's own file still opens. Off, as upstream has it, for every other build.
     pub host_owns_documents: bool,
+    // //// Neoffice — the connection of the Nora assistant pane, as in WordCraft. Nora (the agent) lives on the Neoffice
+    // server, so the pane needs the host's session and credentials to reach her: the host makes the HTTP call and
+    // delivers the answer through `nora_inbox`. Without one the pane says that Nora isn't available and offers no text box.
+    /// Make one call for the Nora pane: a `POST` of a JSON body to a path of the Neoffice instance. The host adds the
+    /// origin and the credentials of its session.
+    pub nora_http: Option<Box<dyn Fn(craft_nora::HttpRequest)>>,
+    /// The answers to [`Services::nora_http`], delivered asynchronously by the host.
+    pub nora_inbox: Option<NoraInbox>,
 }
 
 /// Shared queue of files read asynchronously (browser file picker, drag and drop).
 pub type Inbox = std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>;
+
+// //// Neoffice — answers to the Nora pane's calls, delivered asynchronously by the host like `Inbox`.
+pub type NoraInbox = std::sync::Arc<std::sync::Mutex<Vec<craft_nora::HttpResponse>>>;
+// //// Neoffice — a host that connects the Nora pane makes these calls and delivers these answers.
+pub use craft_nora::{HttpRequest, HttpResponse};
 
 #[derive(Clone, Debug, Default)]
 pub struct Perf {
@@ -256,6 +277,8 @@ pub struct SheetApp {
     /// Chart selected on the sheet (id).
     pub selected_chart: Option<u32>,
     pub started: f64,
+    // //// Neoffice — the conversation of the Nora assistant pane (see `nora_pane`).
+    pub nora: nora_pane::NoraState,
 }
 
 // //// Neoffice — added: the commands a hosting page that opens the workbooks does not leave to the editor: they bring
@@ -305,6 +328,8 @@ impl SheetApp {
             shots: control::Shots::default(),
             selected_chart: None,
             started: now_ms(),
+            // //// Neoffice — the Nora assistant pane's conversation starts empty.
+            nora: Default::default(),
         }
     }
 
@@ -590,6 +615,17 @@ impl SheetApp {
             "ui.notice.dismiss" => {
                 self.notice = None;
                 Ok(Json::Null)
+            }
+            // //// Neoffice — the Nora assistant pane (nora_pane.rs): `{on: true|false}` shows or hides it, and without `on` it
+            // toggles (`value`, WordCraft's name for it, is taken too). Also File › Options › Assistant.
+            "ui.nora" => {
+                let on = match p.get("on").or_else(|| p.get("value")) {
+                    None => !self.ui.nora_pane,
+                    Some(Json::Bool(on)) => *on,
+                    Some(_) => return Some(Err("`on` must be true or false".into())),
+                };
+                self.ui.nora_pane = on;
+                Ok(json!({"on": on}))
             }
             _ => return None,
         };
@@ -1040,6 +1076,8 @@ impl SheetApp {
                 tabs::status_bar(self, ui);
             }
             tabs::sheet_tabs(self, ui);
+            // //// Neoffice — the Nora assistant pane, outermost at the right, when `ui.nora` turned it on.
+            nora_pane::pane(self, ui);
             pivot_pane::show(self, ui);
             panes::show(self, ui);
             egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.grid_bg)).show(ui, |ui| {

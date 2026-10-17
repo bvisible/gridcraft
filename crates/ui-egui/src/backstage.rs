@@ -844,6 +844,13 @@ fn options(app: &mut SheetApp, ui: &mut Ui) {
     if ui.checkbox(&mut autosave, lang.tr("Save .xlsx workbooks automatically after every change")).changed() {
         app.grid.toggle_autosave();
     }
+    // //// Neoffice — the switch of the Nora assistant pane (nora_pane.rs), off by default, as in WordCraft's options.
+    ui.add_space(18.0);
+    section(ui, lang, "Assistant");
+    let mut nora = app.ui.nora_pane;
+    if ui.checkbox(&mut nora, lang.tr("Show the Nora assistant pane (experimental)")).changed() {
+        app.run_or_alert("ui.nora", json!({"on": nora}));
+    }
     let Some(calc) = app.session.active().map(|d| d.wb.calc.clone()) else { return };
     ui.add_space(18.0);
     section(ui, lang, "Formulas");
