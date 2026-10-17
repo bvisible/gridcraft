@@ -72,6 +72,15 @@ carry their own `//// Neoffice — added file` header.
   the guard for it). New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
   `i18n/neoffice.rs`. Every other build behaves as before.
 
+- **The account button of the title bar** (new file `crates/ui-egui/src/account.rs`, one marked line in `lib.rs` and
+  one in `ribbon.rs`'s `title_bar`; new test file `crates/ui-egui/tests/account_button.rs`): at the right end of the
+  title bar, the button WordCraft has there, so the four editors show the person the same way: a round badge in the
+  accent colour, a square of the bar's control height, with up to two initials (the first letters of the words of
+  `Prefs::user_name`, the name a hosting page passes as `?author=`) and the name, nothing else, as the hover text.
+  It shows only when a name is known: not while the name is blank or the engine's placeholder ("GridCraft User").
+  GridCraft's theme has no colour for text on the accent: the initials are white on the light theme's green and
+  the title bar's grey on the dark theme's light green (white would read at about 2:1 there). No new text.
+
 ## Files that cannot carry a comment
 
 None so far.
