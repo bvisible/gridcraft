@@ -131,7 +131,8 @@ impl Language {
         let translated = translated.or_else(|| neoffice::added(self, text));
         // //// Neoffice — a `context|label` key shows its label alone when it is translated too, not only when it falls back to English: upstream's French of c59e942 (our `neoffice.rs` fixes) writes three with their context, and File › Options read "Options|Général". Upstream: `translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`.
         let shown = translated.unwrap_or(text);
-        if text.contains('|') { shown.rsplit_once('|').map_or(shown, |(_, label)| label) } else { shown }
+        // //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise (brand.rs).
+        crate::brand::rebrand(if text.contains('|') { shown.rsplit_once('|').map_or(shown, |(_, label)| label) } else { shown })
     }
 }
 

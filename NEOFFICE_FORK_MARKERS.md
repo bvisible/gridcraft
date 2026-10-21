@@ -124,6 +124,17 @@ carry their own `//// Neoffice — added file` header.
   the host bridge reads its own. Upstream looks for the words anywhere in the query, so `?nora=https://sample.example`
   opened the sales sample. Drop it when upstream reads its flags as parameters.
 
+- **Our product's name in our builds** (new file `crates/ui-egui/src/brand.rs`): `brand::name()` is
+  `NEOFFICE_PRODUCT_NAME` when the build sets it (only the build step of `neoffice-web.yml`: `NeoGrille`), upstream's
+  name otherwise, so upstream's builds and every test run are unchanged. `Language::tr` passes its result through
+  `brand::rebrand`, which swaps the whole word `GridCraft` in every language (the Help tab's About button, its
+  tooltips) without touching the tables; the message box shows its default title `GridCraft` through
+  `brand::alert_title` (`widgets.rs`, one line for the fourteen alerts); the About and Start dialogs, the Agent Control
+  and Macros texts, the VBA notice and the page that failed to start call `brand::name()` (marked lines in `lib.rs`,
+  `i18n.rs`, `widgets.rs`, `dialogs.rs` and `apps/gridcraft-web/src/web.rs`). The page title and the loading text are
+  ours in `apps/gridcraft-web/index.html`. Stored or compared names (storage folders, `GridCraft User`, `gridcraft:*`
+  messages, `ai.storyteller.*`) and the native app (window title, macOS menu) keep upstream's.
+
 ## Files that cannot carry a comment
 
 | File | Why it is ours |

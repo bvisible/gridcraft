@@ -10,6 +10,8 @@
 mod account;
 pub mod backstage;
 mod border_preview;
+// //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise (see brand.rs).
+pub mod brand;
 mod cell_pictures;
 pub mod chartview;
 pub mod control;
@@ -753,7 +755,8 @@ impl SheetApp {
         let vba: Vec<&str> = msgs.iter().copied().filter(|m| m.to_lowercase().contains("macro") || m.contains("VBA")).collect();
         if !vba.is_empty() {
             self.notice = Some(Notice {
-                text: "This workbook contains VBA macros. GridCraft keeps them intact when you save, but does not run them.".into(),
+                // //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise.
+                text: format!("This workbook contains VBA macros. {} keeps them intact when you save, but does not run them.", brand::name()),
                 kind: NoticeKind::Warning,
                 action: Some(("What this means".into(), "macros".into())),
             });
