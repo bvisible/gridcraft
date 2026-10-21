@@ -35,8 +35,8 @@
 use std::sync::{Arc, Weak};
 
 use craft_nora::{
-    AppKind, CommandCall, CommandPolicy, Decision, DocActionKind, DocumentInfo, HttpRequest, HttpResponse, Input, NoraSession, Output, PageContext,
-    Selection, SessionConfig,
+    AppKind, CommandCall, CommandPolicy, Decision, DocActionKind, DocumentInfo, HttpRequest, HttpResponse, Input, NoraError, NoraSession, Output,
+    PageContext, Selection, SessionConfig,
 };
 use craft_nora_ui::{NoraLabels, NoraPanel, NoraStyle, PanelAction, drive};
 use egui::{Color32, RichText, Ui, vec2};
@@ -213,6 +213,9 @@ fn show(app: &mut SheetApp, ui: &mut Ui) {
     let mut outputs = deliver_answers(app);
     outputs.extend(drive(ui.ctx(), &mut app.nora.session));
     app.nora.panel.labels = labels(language);
+    // The panel takes its words for a failure of the connection once, when it is made: given again each frame, as
+    // the labels, so that they follow the interface language.
+    app.nora.panel = std::mem::take(&mut app.nora.panel).with_error_words(error_worder(language));
     app.nora.panel.style = style(ui);
     app.nora.panel.offline = app.services.nora_http.is_none().then(|| language.tr("Nora isn't available in this version yet").to_string());
     for action in app.nora.panel.show(ui, &app.nora.session) {
@@ -224,7 +227,8 @@ fn show(app: &mut SheetApp, ui: &mut Ui) {
             }
             // A new conversation forgets what the last one changed, as the session does.
             PanelAction::NewConversation => app.nora.changes.clear(),
-            PanelAction::Confirm { .. } | PanelAction::Undo => {}
+            // A Stop ends Nora's turn in the conversation; what the workbook already ran stays hers to undo.
+            PanelAction::Confirm { .. } | PanelAction::Undo | PanelAction::Stop => {}
         }
         outputs.extend(app.nora.session.handle(action.into_input()));
     }
@@ -837,7 +841,9 @@ fn labels(language: Language) -> NoraLabels {
         undo_hint: tr("Undo the last change Nora made to the workbook"),
         placeholder: tr("Ask Nora…"),
         send: tr("Send"),
+        stop: tr("Stop"),
         working: tr("Nora is working…"),
+        stopped: tr("Stopped."),
         empty: tr("Ask Nora to fill in, calculate, sort or format your workbook."),
         confirm_heading: tr("Nora wants to:"),
         allow: tr("Allow"),
@@ -859,6 +865,38 @@ fn describer(language: Language) -> fn(&DocActionKind) -> String {
         Language::De => |kind: &DocActionKind| describe(Language::De, kind),
         Language::Cs => |kind: &DocActionKind| describe(Language::Cs, kind),
         Language::Fr => |kind: &DocActionKind| describe(Language::Fr, kind),
+    }
+}
+
+/// [`error_words`] in `language`, as the plain function the panel takes.
+fn error_worder(language: Language) -> fn(&NoraError) -> String {
+    match language {
+        Language::En => |failure: &NoraError| error_words(Language::En, failure),
+        Language::Es => |failure: &NoraError| error_words(Language::Es, failure),
+        Language::Zh => |failure: &NoraError| error_words(Language::Zh, failure),
+        Language::Ja => |failure: &NoraError| error_words(Language::Ja, failure),
+        Language::Ko => |failure: &NoraError| error_words(Language::Ko, failure),
+        Language::Ru => |failure: &NoraError| error_words(Language::Ru, failure),
+        Language::PtBr => |failure: &NoraError| error_words(Language::PtBr, failure),
+        Language::De => |failure: &NoraError| error_words(Language::De, failure),
+        Language::Cs => |failure: &NoraError| error_words(Language::Cs, failure),
+        Language::Fr => |failure: &NoraError| error_words(Language::Fr, failure),
+    }
+}
+
+/// A failure of the connection to Nora in `language` (the panel shows the workbook's own sentences, an action it
+/// refused, as they come). The server's own words, when it gave some, are shown as they are: the server writes them
+/// for the person.
+fn error_words(language: Language, failure: &NoraError) -> String {
+    match failure {
+        NoraError::Timeout => language.tr("Nora did not answer in time.").to_string(),
+        NoraError::Unreachable(_) => language.tr("Nora could not be reached. Check the connection and try again.").to_string(),
+        NoraError::Http(401 | 403) => language.tr("Your session has expired. Sign in again.").to_string(),
+        NoraError::Http(status) => {
+            language.tr("The server could not answer (error {status}). Try again in a moment.").replace("{status}", &status.to_string())
+        }
+        NoraError::Server { message, .. } => message.clone(),
+        NoraError::Malformed(_) => language.tr("Nora's answer could not be read.").to_string(),
     }
 }
 
@@ -1762,6 +1800,45 @@ mod tests {
                 assert!(language == Language::En || word != english, "{language:?}: {word}");
             }
             assert!(!(labels.describe)(&DocActionKind::Undo).is_empty());
+            assert!(language == Language::En || labels.stop != "Stop", "{language:?}: {}", labels.stop);
+            assert!(language == Language::En || error_worder(language)(&NoraError::Timeout) != "Nora did not answer in time.", "{language:?}");
         }
+    }
+
+    /// While Nora works, the pane's Send button is a Stop button: a click ends her turn there and then, the pane says
+    /// so, and the next message can go.
+    #[test]
+    fn stop_ends_nora_s_turn() {
+        let (services, outbox, inbox) = connected();
+        let mut a = app(services);
+        a.run("ui.nora", json!({"on": true})).unwrap();
+        let mut h = harness(a);
+        ask(&mut h, &outbox, &inbox, "Sum column B");
+        assert!(h.state().nora.session.is_busy(), "Nora is at work");
+        h.get_by_label("Stop").click();
+        h.run_steps(4);
+        assert!(!h.state().nora.session.is_busy(), "her turn ended");
+        assert!(h.query_by_label("Stopped.").is_some(), "the pane says Nora was stopped");
+        assert!(h.query_by_label("Send").is_some(), "the next message can go");
+    }
+
+    /// A call that got no answer at all is said in the interface language, not with the browser's English reason.
+    #[test]
+    fn no_answer_from_nora_is_said_in_the_interface_language() {
+        let (services, outbox, inbox) = connected();
+        let mut a = app(services);
+        a.run("app.language.set", json!({"language": "fr"})).unwrap();
+        a.run("ui.nora", json!({"on": true})).unwrap();
+        let mut h = harness(a);
+        h.state_mut().nora.panel.set_draft("Bonjour");
+        h.run_steps(2);
+        h.get_by_label("Envoyer").click();
+        h.run_steps(4);
+        let sent = take(&outbox);
+        let body = json!({"exception": "No answer from Nora: TypeError: Failed to fetch"}).to_string();
+        inbox.lock().unwrap_or_else(|e| e.into_inner()).push(HttpResponse { id: sent[0].id, status: 0, body });
+        h.run_steps(4);
+        assert!(h.query_by_label("Nora n'a pas pu être jointe. Vérifiez la connexion et réessayez.").is_some());
+        assert!(h.query_by_label("No answer from Nora: TypeError: Failed to fetch").is_none());
     }
 }

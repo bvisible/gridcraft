@@ -47,6 +47,16 @@ const FRENCH: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "Le classeur a changé depuis la modification de Nora : annulez-la étape par étape avec la commande Annuler.",
     ),
+    ("Stop", "Arrêter"),
+    ("Stopped.", "Arrêté."),
+    ("Nora did not answer in time.", "Nora n'a pas répondu à temps."),
+    ("Nora could not be reached. Check the connection and try again.", "Nora n'a pas pu être jointe. Vérifiez la connexion et réessayez."),
+    ("Your session has expired. Sign in again.", "Votre session a expiré. Reconnectez-vous."),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "Le serveur n'a pas pu répondre (erreur {status}). Réessayez dans un instant.",
+    ),
+    ("Nora's answer could not be read.", "La réponse de Nora n'a pas pu être lue."),
 ];
 
 /// The same in German.
@@ -83,6 +93,19 @@ const GERMAN: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "Die Arbeitsmappe hat sich seit Noras Änderung verändert: Nehmen Sie diese Schritt für Schritt mit dem Befehl Rückgängig zurück.",
     ),
+    ("Stop", "Stoppen"),
+    ("Stopped.", "Gestoppt."),
+    ("Nora did not answer in time.", "Nora hat nicht rechtzeitig geantwortet."),
+    (
+        "Nora could not be reached. Check the connection and try again.",
+        "Nora war nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+    ),
+    ("Your session has expired. Sign in again.", "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "Der Server konnte nicht antworten (Fehler {status}). Versuchen Sie es in einem Moment erneut.",
+    ),
+    ("Nora's answer could not be read.", "Die Antwort von Nora konnte nicht gelesen werden."),
 ];
 
 /// The same in Spanish.
@@ -116,6 +139,16 @@ const SPANISH: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "El libro ha cambiado desde el cambio de Nora: deshágalo paso a paso con el comando Deshacer.",
     ),
+    ("Stop", "Detener"),
+    ("Stopped.", "Detenido."),
+    ("Nora did not answer in time.", "Nora no respondió a tiempo."),
+    ("Nora could not be reached. Check the connection and try again.", "No se pudo contactar con Nora. Compruebe la conexión y vuelva a intentarlo."),
+    ("Your session has expired. Sign in again.", "Su sesión ha caducado. Inicie sesión de nuevo."),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "El servidor no pudo responder (error {status}). Inténtelo de nuevo en unos instantes.",
+    ),
+    ("Nora's answer could not be read.", "No se pudo leer la respuesta de Nora."),
 ];
 
 /// The same in Brazilian Portuguese.
@@ -152,6 +185,16 @@ const PORTUGUESE: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "A pasta de trabalho foi alterada depois da alteração feita pela Nora: desfaça-a passo a passo com o comando Desfazer.",
     ),
+    ("Stop", "Parar"),
+    ("Stopped.", "Interrompido."),
+    ("Nora did not answer in time.", "A Nora não respondeu a tempo."),
+    ("Nora could not be reached. Check the connection and try again.", "Não foi possível conectar à Nora. Verifique a conexão e tente novamente."),
+    ("Your session has expired. Sign in again.", "Sua sessão expirou. Entre novamente."),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "O servidor não conseguiu responder (erro {status}). Tente novamente em instantes.",
+    ),
+    ("Nora's answer could not be read.", "Não foi possível ler a resposta da Nora."),
 ];
 
 /// The same in Russian.
@@ -188,6 +231,16 @@ const RUSSIAN: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "Книга была изменена после изменения, сделанного Nora: отменяйте его шаг за шагом с помощью команды «Отменить».",
     ),
+    ("Stop", "Остановить"),
+    ("Stopped.", "Остановлено."),
+    ("Nora did not answer in time.", "Nora не ответила вовремя."),
+    ("Nora could not be reached. Check the connection and try again.", "Не удалось связаться с Nora. Проверьте подключение и повторите попытку."),
+    ("Your session has expired. Sign in again.", "Ваш сеанс истёк. Войдите снова."),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "Сервер не смог ответить (ошибка {status}). Повторите попытку через некоторое время.",
+    ),
+    ("Nora's answer could not be read.", "Не удалось прочитать ответ Nora."),
 ];
 
 /// The same in Czech.
@@ -221,6 +274,13 @@ const CZECH: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "Sešit se změnil po změně, kterou provedla Nora: vraťte ji krok za krokem pomocí příkazu Zpět.",
     ),
+    ("Stop", "Zastavit"),
+    ("Stopped.", "Zastaveno."),
+    ("Nora did not answer in time.", "Nora neodpověděla včas."),
+    ("Nora could not be reached. Check the connection and try again.", "Nora není dostupná. Zkontrolujte připojení a zkuste to znovu."),
+    ("Your session has expired. Sign in again.", "Vaše relace vypršela. Přihlaste se znovu."),
+    ("The server could not answer (error {status}). Try again in a moment.", "Server nemohl odpovědět (chyba {status}). Zkuste to za chvíli znovu."),
+    ("Nora's answer could not be read.", "Odpověď Nory nebylo možné přečíst."),
 ];
 
 /// The same in Japanese.
@@ -254,6 +314,16 @@ const JAPANESE: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "Nora の変更後にブックが変更されています：元に戻すコマンドで一つずつ取り消してください。",
     ),
+    ("Stop", "停止"),
+    ("Stopped.", "停止しました。"),
+    ("Nora did not answer in time.", "Nora からの応答が時間内に届きませんでした。"),
+    ("Nora could not be reached. Check the connection and try again.", "Nora に接続できませんでした。接続を確認して、もう一度お試しください。"),
+    ("Your session has expired. Sign in again.", "セッションの有効期限が切れました。もう一度サインインしてください。"),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "サーバーから応答がありませんでした（エラー {status}）。しばらくしてから再度お試しください。",
+    ),
+    ("Nora's answer could not be read.", "Nora の回答を読み取れませんでした。"),
 ];
 
 /// The same in Simplified Chinese.
@@ -284,6 +354,13 @@ const CHINESE: &[(&str, &str)] = &[
     ("There is nothing of Nora's to undo.", "没有可以撤销的 Nora 更改。"),
     ("Nora's change was made in another workbook.", "Nora 的更改是在另一个工作簿中进行的。"),
     ("The workbook has changed since Nora's change: undo it step by step with Undo.", "Nora 更改后工作簿已发生变化：请使用“撤销”命令逐步撤销。"),
+    ("Stop", "停止"),
+    ("Stopped.", "已停止。"),
+    ("Nora did not answer in time.", "Nora 未能及时回复。"),
+    ("Nora could not be reached. Check the connection and try again.", "无法连接到 Nora。请检查网络连接后重试。"),
+    ("Your session has expired. Sign in again.", "您的会话已过期，请重新登录。"),
+    ("The server could not answer (error {status}). Try again in a moment.", "服务器无法响应（错误 {status}）。请稍后重试。"),
+    ("Nora's answer could not be read.", "无法读取 Nora 的回复。"),
 ];
 
 /// The same in Korean.
@@ -317,6 +394,16 @@ const KOREAN: &[(&str, &str)] = &[
         "The workbook has changed since Nora's change: undo it step by step with Undo.",
         "Nora의 변경 이후 통합 문서가 변경되었습니다: 실행 취소 명령으로 한 단계씩 되돌리세요.",
     ),
+    ("Stop", "중지"),
+    ("Stopped.", "중지되었습니다."),
+    ("Nora did not answer in time.", "Nora가 제시간에 응답하지 않았습니다."),
+    ("Nora could not be reached. Check the connection and try again.", "Nora에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도해 주세요."),
+    ("Your session has expired. Sign in again.", "세션이 만료되었습니다. 다시 로그인해 주세요."),
+    (
+        "The server could not answer (error {status}). Try again in a moment.",
+        "서버가 응답하지 못했습니다(오류 {status}). 잠시 후 다시 시도해 주세요.",
+    ),
+    ("Nora's answer could not be read.", "Nora의 응답을 읽을 수 없습니다."),
 ];
 
 /// Corrections of upstream's French catalog as it stands in v0.6.1: about 50 of its entries read as the
