@@ -158,7 +158,8 @@ pub fn specs() -> Vec<CommandSpec> {
             "From Text/CSV",
             ["Data", "Get & Transform Data"],
             None,
-            "{path | text, delimiter?: \",\", sheet?: new sheet name} → imports into a new sheet as a table",
+            // //// Neoffice — `base64`: a file's bytes (see `from_csv`).
+            "{path | text | base64, delimiter?: \",\", sheet?: new sheet name} → imports into a new sheet as a table",
             has_doc,
             from_csv
         ),
@@ -167,7 +168,8 @@ pub fn specs() -> Vec<CommandSpec> {
             "Get Data",
             ["Data", "Get & Transform Data"],
             None,
-            "{path | text} (CSV/TSV/JSON array of objects) → new sheet table",
+            // //// Neoffice — `base64`: a file's bytes (see `from_csv`).
+            "{path | text | base64, sheet?: new sheet name} (CSV/TSV/JSON array of objects) → new sheet table",
             has_doc,
             from_csv
         ),
@@ -859,6 +861,10 @@ fn from_csv(s: &mut Session, p: &Json) -> Result<Json> {
         t.as_bytes().to_vec()
     } else if let Some(path) = str_param(p, "path") {
         crate::io::read_file(path)?
+    } else if let Some(b) = str_param(p, "base64") {
+        // //// Neoffice — `base64`: the bytes of a file the browser read for Get Data in an editor whose page opens the
+        // workbooks (the Drive, Neodesk): the file is imported into the page's workbook instead of opened beside it.
+        crate::io::base64_decode(b).ok_or_else(|| bad("data.getData", "invalid base64"))?
     } else {
         s.ui_requests.push(crate::UiRequest::Dialog("open".into(), json!({})));
         return ok();
@@ -887,7 +893,10 @@ fn from_csv(s: &mut Session, p: &Json) -> Result<Json> {
             let delim = str_param(p, "delimiter")
                 .and_then(|d| d.chars().next())
                 .unwrap_or(if text.lines().next().is_some_and(|l| l.contains('\t')) { '\t' } else { ',' });
-            let opts = gridcraft_xlsx::CsvOptions { delimiter: delim as u8, ..Default::default() };
+            // //// Neoffice — a file's bytes (`base64`) have their separator found as File › Open finds a CSV's (0: comma,
+            // semicolon or tab), unless `delimiter` names it; `text` and `path` keep upstream's comma, or the first line's tab.
+            let found = str_param(p, "base64").is_some() && str_param(p, "delimiter").is_none();
+            let opts = gridcraft_xlsx::CsvOptions { delimiter: if found { 0 } else { delim as u8 }, ..Default::default() };
             let wb = gridcraft_xlsx::read_csv(&bytes, &opts).map_err(|e| EngineError::Other(e.to_string()))?;
             let sh = wb.sheet(0).ok_or(EngineError::NoDocument)?;
             let Some(u) = sh.used_range() else { return Err(EngineError::Other("The file is empty.".into())) };

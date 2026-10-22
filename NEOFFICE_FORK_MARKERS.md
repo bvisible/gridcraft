@@ -75,6 +75,24 @@ carry their own `//// Neoffice — added file` header.
   the editor is not taken (`apps/gridcraft-web/src/web.rs`); the file the page hands over still opens (the inbox lifts
   the guard for it). New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
   `i18n/neoffice.rs`. Every other build behaves as before.
+  Two things still reach a file there, and stay on the page's workbook (new file `crates/ui-egui/src/hosted.rs`, marked lines
+  in `lib.rs`: the module, `Services::pick_import_async`, the `host_protected_file` and `imports` fields of `SheetApp`, the
+  guard in `run`, the inbox, `open_dialog` and `logic`; tests in `crates/ui-egui/tests/host_documents.rs`):
+  - **the page's workbook has a password**: the inbox asks for it with the `openPassword` dialog, as for a file opened
+    without a page, and the guard lets the dialog's `file.open` through for that file only, told from any other by a
+    fingerprint of its bytes. The password goes to `file.open` and nowhere else: the bridge never sees it.
+  - **Data › Get Data** (and `data.getData` or `data.fromTextCsv` without a file, which ask for one): the browser's picker
+    for a text, CSV or JSON file (`apps/gridcraft-web/src/host.rs`, a picker of its own whose file never reaches the inbox
+    of the page's files) and the file imported into the page's workbook, in a new sheet named after it, as Excel's Get
+    Data does. Upstream's opened it as a second workbook beside the page's. For that, the engine's `from_csv`
+    (`crates/engine/src/cmd/extra.rs`, marked) takes a file's bytes as `base64` and finds their separator as File › Open
+    finds a CSV's (comma, semicolon or tab) unless `delimiter` names it; `text` and `path` keep upstream's comma.
+
+- **A workbook without a styles part opens without a warning** (`crates/xlsx/src/read.rs`, one marked hunk; tests in the
+  new file `crates/xlsx/src/tests/optional_parts.rs`, a marked `mod` line in its `mod.rs`): ECMA-376 makes the part
+  optional and Excel opens such a file silently, but upstream warned "no styles part", which the editor shows in a message
+  box at every open (files that a mail or a script writes often have none). A styles part the workbook names and lacks
+  still warns. Drop it when upstream stops warning.
 
 - **The account button of the title bar** (new file `crates/ui-egui/src/account.rs`, one marked line in `lib.rs` and
   one in `ribbon.rs`'s `title_bar`; new test file `crates/ui-egui/tests/account_button.rs`): at the right end of the

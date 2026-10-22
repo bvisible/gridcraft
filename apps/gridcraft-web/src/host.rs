@@ -25,7 +25,9 @@
 //! The bridge exists only when the page asks for it with `?host=parent` and a page of its own
 //! origin frames it; otherwise the editor behaves as it always did. Only that parent is heard or
 //! answered. In host mode the page starts with an empty workbook instead of a sample (the parent
-//! sends the file to edit), and `?author=<name>` is the name that signs new notes and comments.
+//! sends the file to edit), and `?author=<name>` is the name that signs new notes and comments. The
+//! page's workbook stays the only one: Data › Get Data asks the browser for a file of its own
+//! (`pick_import`) and imports it into that workbook, in a new sheet.
 //!
 //! What decides things (which files count as saved, what a refusal does, what the message says) is
 //! plain Rust at the top of this file and is tested off wasm; the part that talks to the browser is
@@ -255,6 +257,10 @@ mod wire {
         pub fn connect(&self, services: &mut Services, inbox: Inbox, ctx: egui::Context) {
             // //// Neoffice — the page that frames the editor opens the workbooks (`Services::host_owns_documents`).
             services.host_owns_documents = true;
+            // Get Data imports into the page's workbook: a picker of its own, whose file never reaches `inbox` (the
+            // page's files), so that it is not opened as a second workbook.
+            let import_ctx = ctx.clone();
+            services.pick_import_async = Some(Box::new(move |imports: Inbox| pick_import(imports, import_ctx.clone())));
             self.listen(inbox, ctx);
             let bridge = self.clone();
             services.download = Some(Box::new(move |path: &str, bytes: &[u8]| bridge.post_save(path, bytes)));
@@ -347,6 +353,18 @@ mod wire {
         fn send(&self, fields: &[(&str, JsValue)]) -> bool {
             message(fields).is_some_and(|m| self.parent.post_message(&m, &self.origin).is_ok())
         }
+    }
+
+    /// Asks the browser for a text, CSV or JSON file to import (Get Data) and puts its bytes in `imports`.
+    fn pick_import(imports: Inbox, ctx: egui::Context) {
+        wasm_bindgen_futures::spawn_local(async move {
+            let Some(file) = rfd::AsyncFileDialog::new().add_filter("Text, CSV or JSON", &["csv", "tsv", "txt", "json"]).pick_file().await else {
+                return;
+            };
+            let bytes = file.read().await;
+            imports.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push((file.file_name(), bytes));
+            ctx.request_repaint();
+        });
     }
 
     fn query_param(key: &str) -> Option<String> {

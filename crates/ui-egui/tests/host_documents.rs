@@ -5,8 +5,13 @@
 //! show the person a workbook the page knows nothing about, and its save would reach the page under another name.
 //! The file the page hands over still opens, and without the host's setting everything is as upstream has it.
 
+use std::cell::Cell;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+
 use egui_kittest::kittest::Queryable as _;
 use gridcraft_engine::Session;
+use gridcraft_engine::core::{CellRef, Value};
 use gridcraft_ui_egui::{Inbox, Services, SheetApp};
 use serde_json::json;
 
@@ -104,4 +109,117 @@ fn the_start_dialog_and_the_command_search_offer_no_other_workbook_to_a_host_tha
     // New, Open and Close are three of the commands of the File menu: three buttons fewer for a host.
     assert!(results[0] > results[1], "the command search lists fewer commands to a host: {results:?}");
     assert_eq!(results[0] - results[1], 3, "exactly New, Open and Close: {results:?}");
+}
+
+const PW: &str = "synthetic-pw-5531";
+
+/// A workbook with 42 in A1, saved as `.xlsx` and encrypted with `PW`.
+fn encrypted_bytes() -> Vec<u8> {
+    let mut s = Session::new();
+    s.new_workbook();
+    s.run("cell.set", json!({"cell": "A1", "input": "42"})).unwrap();
+    let xlsx = gridcraft_engine::io::save_bytes(&s.active().unwrap().wb, "book.xlsx").unwrap();
+    gridcraft_xlsx::testing::encrypt_workbook(&xlsx, PW)
+}
+
+fn dialog(h: &Harness) -> Option<String> {
+    h.state().dialog.as_ref().map(|d| d.name().to_string())
+}
+
+fn value(h: &Harness, cell: &str) -> Value {
+    h.state().session.active().unwrap().wb.active().unwrap().value(CellRef::parse(cell).unwrap())
+}
+
+/// Files the editor handed to the page (Save, Save As, the exports go there through `download`).
+type Handed = Arc<Mutex<Vec<String>>>;
+
+fn hosted(inbox: &Inbox, handed: &Handed) -> Services {
+    let handed = handed.clone();
+    Services {
+        host_owns_documents: true,
+        inbox: Some(inbox.clone()),
+        download: Some(Box::new(move |name: &str, _bytes: &[u8]| handed.lock().unwrap().push(name.to_string()))),
+        ..Default::default()
+    }
+}
+
+/// The page's workbook has a password: the editor asks for it, as for a file opened without a page, and the password
+/// opens that workbook in place of the blank one (the guard lets that one file through). Nothing goes to the page on
+/// the way, and the guard is up again afterwards.
+#[test]
+fn the_pages_password_protected_workbook_opens_with_its_password() {
+    let inbox = Inbox::default();
+    let handed = Handed::default();
+    let mut h = harness(hosted(&inbox, &handed));
+    inbox.lock().unwrap().push(("Secret.xlsx".into(), encrypted_bytes()));
+    h.run_steps(3);
+    assert_eq!(dialog(&h).as_deref(), Some("openPassword"), "the editor asks for the password");
+    assert!(h.state().message.is_none(), "no error box: the dialog asks instead");
+
+    // A wrong password says so, and the dialog stays for another try: it is the password, not the guard, that refuses.
+    h.state_mut().dialog.as_mut().unwrap().values.insert("password".into(), json!("wrong-guess"));
+    h.get_by_label("   OK   ").click();
+    h.run_steps(3);
+    let said = h.state().message.as_ref().map(|(_, m)| m.clone()).unwrap_or_default();
+    assert!(said.contains(gridcraft_engine::io::WRONG_PASSWORD), "{said}");
+    assert_eq!(dialog(&h).as_deref(), Some("openPassword"));
+    h.state_mut().message = None;
+
+    h.state_mut().dialog.as_mut().unwrap().values.insert("password".into(), json!(PW));
+    h.get_by_label("   OK   ").click();
+    h.run_steps(3);
+    assert_eq!(dialog(&h), None);
+    assert!(h.state().message.is_none(), "{:?}", h.state().message);
+    assert_eq!(h.state().session.documents().len(), 1, "the page's workbook, in place of the blank one");
+    assert_eq!(value(&h, "A1"), Value::Number(42.0));
+    assert!(h.state().session.active().unwrap().display_title().contains("Secret"));
+    assert!(handed.lock().unwrap().is_empty(), "nothing went to the page: {:?}", handed.lock().unwrap());
+
+    // The guard is up again: no other workbook opens, with a password or without.
+    let other = gridcraft_engine::io::base64_encode(&encrypted_bytes());
+    assert!(h.state_mut().run("file.open", json!({"name": "Other.xlsx", "base64": other, "password": PW})).is_err());
+    assert_eq!(h.state().session.documents().len(), 1);
+}
+
+/// Data › Get Data in an editor whose page opens the workbooks imports the file into the page's workbook, in a new
+/// sheet named after it, as Excel's Get Data does, instead of opening it as a second workbook beside the page's. Its
+/// separator is found as File › Open finds a CSV's. Without a page, Get Data opens the file as upstream's does.
+#[test]
+fn get_data_imports_into_the_pages_workbook_instead_of_opening_another() {
+    for hosted_page in [true, false] {
+        let inbox = Inbox::default();
+        let handed = Handed::default();
+        let workbook_picker = Rc::new(Cell::new(0));
+        let asked = workbook_picker.clone();
+        let mut services = if hosted_page { hosted(&inbox, &handed) } else { Services { inbox: Some(inbox.clone()), ..Default::default() } };
+        services.open_async = Some(Box::new(move || asked.set(asked.get() + 1)));
+        services.pick_import_async = Some(Box::new(|imports: Inbox| {
+            imports.lock().unwrap().push(("Prices.csv".into(), b"Item;Price\nTea;3.5\nCoffee;4\n".to_vec()));
+        }));
+        let mut h = harness(services);
+        let sheets = h.state().session.active().unwrap().wb.sheets.len();
+
+        // The ribbon's Get Data button, then the command its key tip and the command search run.
+        h.state_mut().open_dialog("open", json!({}));
+        h.run_steps(3);
+        if !hosted_page {
+            assert_eq!(workbook_picker.get(), 1, "without a page, Get Data opens a file as upstream's does");
+            continue;
+        }
+        assert_eq!(workbook_picker.get(), 0, "the workbook picker is never offered");
+        let book = h.state().session.active().unwrap();
+        assert_eq!(h.state().session.documents().len(), 1, "still only the page's workbook");
+        assert_eq!(book.wb.sheets.len(), sheets + 1, "a new sheet");
+        assert_eq!(book.wb.active().unwrap().name, "Prices");
+        assert_eq!(value(&h, "A1"), Value::Text("Item".into()));
+        assert_eq!(value(&h, "B2"), Value::Number(3.5), "the semicolon is the separator");
+        assert_eq!(value(&h, "A3"), Value::Text("Coffee".into()));
+
+        h.state_mut().run("data.getData", json!({})).unwrap();
+        h.run_steps(3);
+        assert_eq!(workbook_picker.get(), 0);
+        assert_eq!(h.state().session.documents().len(), 1);
+        assert_eq!(h.state().session.active().unwrap().wb.sheets.len(), sheets + 2, "a second import, a second sheet");
+        assert!(handed.lock().unwrap().is_empty(), "an import saves nothing to the page");
+    }
 }
