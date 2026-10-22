@@ -43,7 +43,9 @@ fn shared_formulas_and_value_types() {
     // Rows/cells without r continue from the previous position.
     assert_eq!(s.value(at("A7")), Value::Number(9.0));
     assert_eq!(s.value(at("B7")), Value::Number(10.0));
-    assert!(rep.warnings.iter().any(|w| w.contains("styles")));
+    // //// Neoffice — a package without a styles part opens without a warning (read.rs, optional_parts.rs): upstream
+    // asserted its "no styles part" warning here.
+    assert!(!rep.warnings.iter().any(|w| w.contains("styles")), "{:?}", rep.warnings);
 }
 
 #[test]
