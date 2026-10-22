@@ -9,6 +9,8 @@ mod ink_roundtrip;
 mod literal_category_roundtrip;
 mod malformed;
 mod ods_tests;
+// //// Neoffice — a workbook without a styles part opens without a warning (optional_parts.rs).
+mod optional_parts;
 mod passthrough_tests;
 mod pivot_tests;
 mod richdata_tests;

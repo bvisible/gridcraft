@@ -119,21 +119,24 @@ pub fn read_xlsx(bytes: &[u8]) -> Result<(Workbook, ReadReport), IoError> {
     {
         checkboxes = crate::feature_bags::checkbox_complements(&x);
     }
-    if let Some(r) = find_rel(&wb_rels, "styles").cloned() {
-        if let Some(x) = cx.optional_xml(&r.target)? {
-            let StylesIn { xfs, dxfs, palette, named, num_fmts } = read_styles(&x, &checkboxes);
-            cx.num_fmts = num_fmts;
-            // Cell format 0 is the Normal style: its font is what every unformatted cell shows.
-            if let Some(normal) = xfs.first() {
-                cx.styles = StyleTable::with_default(Style { font: normal.font.clone(), ..Style::default() });
-            }
-            cx.xf_map = xfs.into_iter().enumerate().map(|(i, s)| if i == 0 { StyleId::DEFAULT } else { cx.styles.intern(s) }).collect();
-            cx.dxfs = dxfs;
-            cx.palette = palette;
-            wb.cell_styles = named;
+    // //// Neoffice — no warning for a workbook without a styles part: ECMA-376 makes the part optional, Excel opens such a
+    // file without a word, and every cell already takes the default style. Upstream warned "no styles part" in an `else`
+    // here, which the editor shows in a message box at every open (a file that a mail or a script wrote with no styles).
+    // Without the `else`, clippy wants the two `if let` as one.
+    if let Some(r) = find_rel(&wb_rels, "styles").cloned()
+        && let Some(x) = cx.optional_xml(&r.target)?
+    {
+        let StylesIn { xfs, dxfs, palette, named, num_fmts } = read_styles(&x, &checkboxes);
+        cx.num_fmts = num_fmts;
+        // Cell format 0 is the Normal style: its font is what every unformatted cell shows.
+        if let Some(normal) = xfs.first() {
+            cx.styles = StyleTable::with_default(Style { font: normal.font.clone(), ..Style::default() });
         }
-    } else {
-        cx.warn("no styles part");
+        // //// Neoffice — one indent less, as the whole block: see the marker above this `if`.
+        cx.xf_map = xfs.into_iter().enumerate().map(|(i, s)| if i == 0 { StyleId::DEFAULT } else { cx.styles.intern(s) }).collect();
+        cx.dxfs = dxfs;
+        cx.palette = palette;
+        wb.cell_styles = named;
     }
     if let Some(r) = find_rel(&wb_rels, "theme").cloned()
         && let Some(x) = cx.optional_xml(&r.target)?
