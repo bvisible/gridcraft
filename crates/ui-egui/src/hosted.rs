@@ -7,7 +7,9 @@
 //! - **The page's workbook has a password.** The inbox asks for it with the `openPassword` dialog, as for a file
 //!   opened without a page, and the dialog's `file.open` is let through for that file only: the one the page handed
 //!   over, told from any other by a fingerprint of its bytes. The password goes to `file.open` and nowhere else; the
-//!   bridge to the page never sees it.
+//!   bridge to the page never sees it. GridCraft cannot write an encrypted workbook, so that workbook is never handed
+//!   back to the page: Save, Save As and the title bar's Save send nothing (an encrypted original in the Drive is never
+//!   replaced by a copy in clear), a message bar says why, and the workbook stays marked as changed.
 //! - **Data › Get Data**, and every command that asks for a file to import (`data.getData`, `data.fromTextCsv`), opens
 //!   the browser's file picker, which would bring the file in as a second workbook beside the page's. Here it imports
 //!   the text, CSV or JSON file into the page's workbook, in a new sheet, as Excel's Get Data does.
@@ -22,6 +24,11 @@ use crate::{Inbox, SheetApp};
 
 /// Excel's longest sheet name.
 const MAX_SHEET_NAME_CHARS: usize = 31;
+
+/// What the message bar says when a save of the page's password-protected workbook is refused. `GridCraft` is the
+/// product's name, which our builds show as theirs (`brand::rebrand`).
+pub(crate) const SAVE_IN_CLEAR_REFUSED: &str =
+    "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.";
 
 /// A fingerprint of a file's bytes as `file.open` carries them (`base64`), to tell the page's file from another.
 pub(crate) fn fingerprint(base64: &str) -> u64 {
@@ -50,6 +57,34 @@ impl SheetApp {
     /// for, when a page opens the workbooks.
     pub(crate) fn remember_the_pages_protected_workbook(&mut self, base64: &str) {
         self.host_protected_file = self.services.host_owns_documents.then(|| fingerprint(base64));
+    }
+
+    /// After a command [`SheetApp::run`] ran: once a `file.open` succeeds the password dialog has nothing left to let
+    /// through, and when that open was the page's workbook with its password (`protected`), the workbook it opened is
+    /// the one that is never saved back to the page.
+    pub(crate) fn after_a_hosted_open(&mut self, id: &str, protected: bool, opened: bool) {
+        if id != "file.open" || !opened {
+            return;
+        }
+        self.host_protected_file = None;
+        if protected {
+            self.host_encrypted_original = self.session.active().map(|d| d.uid);
+        }
+    }
+
+    /// Whether the active workbook is the page's, opened with its password: GridCraft cannot write it encrypted, so
+    /// nothing of it goes back to the page, which would replace the encrypted original with a copy in clear.
+    pub(crate) fn keeps_the_pages_encrypted_original(&self) -> bool {
+        self.services.host_owns_documents
+            && self.host_encrypted_original.is_some()
+            && self.session.active().map(|d| d.uid) == self.host_encrypted_original
+    }
+
+    /// A save of the page's password-protected workbook: nothing is handed to the page, the message bar says why, and
+    /// the workbook keeps its changes marked as unsaved.
+    pub(crate) fn refuse_to_save_in_clear(&mut self) {
+        let text = self.ui.language.tr(SAVE_IN_CLEAR_REFUSED).to_string();
+        self.notice = Some(crate::Notice { text, kind: crate::NoticeKind::Warning, action: None });
     }
 
     /// Data › Get Data in an editor whose page opens the workbooks: the browser asks for a text, CSV or JSON file, which

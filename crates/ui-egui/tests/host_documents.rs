@@ -223,3 +223,63 @@ fn get_data_imports_into_the_pages_workbook_instead_of_opening_another() {
         assert!(handed.lock().unwrap().is_empty(), "an import saves nothing to the page");
     }
 }
+
+/// What the message bar says when a save of the page's password-protected workbook is refused (English, the harness's
+/// language; `GridCraft` is what our builds show as NeoGrille).
+const SAVE_IN_CLEAR_REFUSED: &str =
+    "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.";
+
+fn press_cmd_s(h: &mut Harness) {
+    let (key, modifiers) = (egui::Key::S, egui::Modifiers::COMMAND);
+    h.input_mut().events.push(egui::Event::Key { key, physical_key: Some(key), pressed: true, repeat: false, modifiers });
+    h.input_mut().events.push(egui::Event::Key { key, physical_key: Some(key), pressed: false, repeat: false, modifiers });
+    h.run_steps(3);
+}
+
+/// A hosted editor with the page's workbook `bytes` open (typing `password` in the dialog when it asks), B1 then changed.
+fn hosted_and_changed(bytes: Vec<u8>, password: Option<&str>) -> (Harness, Handed) {
+    let inbox = Inbox::default();
+    let handed = Handed::default();
+    let mut h = harness(hosted(&inbox, &handed));
+    inbox.lock().unwrap().push(("Secret.xlsx".into(), bytes));
+    h.run_steps(3);
+    if let Some(password) = password {
+        h.state_mut().dialog.as_mut().unwrap().values.insert("password".into(), json!(password));
+        h.get_by_label("   OK   ").click();
+        h.run_steps(3);
+    }
+    assert_eq!(value(&h, "A1"), Value::Number(42.0), "the page's workbook is open");
+    h.state_mut().notice = None;
+    h.state_mut().run("cell.set", json!({"cell": "B1", "input": "7"})).unwrap();
+    h.run_steps(2);
+    assert!(h.state().session.active().unwrap().is_dirty());
+    (h, handed)
+}
+
+/// GridCraft cannot write an encrypted workbook: the page's workbook opened with its password is never handed back to
+/// the page, which would replace the encrypted original in the Drive with a copy in clear. Cmd+S, the title bar's Save
+/// and Save As send nothing, a message bar says why, and the workbook stays marked as changed. The same workbook without
+/// a password goes to the page as before.
+#[test]
+fn the_pages_password_protected_workbook_is_never_saved_back_in_clear() {
+    let (mut h, handed) = hosted_and_changed(encrypted_bytes(), Some(PW));
+    press_cmd_s(&mut h);
+    h.state_mut().run_or_alert("file.save", json!({}));
+    h.state_mut().run_or_alert("file.saveAs", json!({}));
+    h.run_steps(3);
+    assert!(handed.lock().unwrap().is_empty(), "nothing went to the page: {:?}", handed.lock().unwrap());
+    assert_eq!(h.state().notice.as_ref().map(|n| n.text.as_str()), Some(SAVE_IN_CLEAR_REFUSED));
+    assert!(h.query_by_label(SAVE_IN_CLEAR_REFUSED).is_some(), "the message bar shows it");
+    assert!(h.state().message.is_none(), "a bar, not a message box: {:?}", h.state().message);
+    assert!(h.state().session.active().unwrap().is_dirty(), "the changes stay marked as unsaved");
+
+    // The page's workbook without a password is saved to the page as before.
+    let mut plain = Session::new();
+    plain.new_workbook();
+    plain.run("cell.set", json!({"cell": "A1", "input": "42"})).unwrap();
+    let bytes = gridcraft_engine::io::save_bytes(&plain.active().unwrap().wb, "book.xlsx").unwrap();
+    let (mut h, handed) = hosted_and_changed(bytes, None);
+    press_cmd_s(&mut h);
+    assert_eq!(handed.lock().unwrap().as_slice(), ["Secret.xlsx".to_string()], "saved to the page");
+    assert_ne!(h.state().notice.as_ref().map(|n| n.text.as_str()), Some(SAVE_IN_CLEAR_REFUSED));
+}

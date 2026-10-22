@@ -288,6 +288,9 @@ pub struct SheetApp {
     host_protected_file: Option<u64>,
     // //// Neoffice — files the browser reads for Get Data when a page opens the workbooks, imported on arrival (hosted.rs).
     imports: Option<Inbox>,
+    // //// Neoffice — the page's workbook opened with its password (its document uid): never saved back to the page, which
+    // would replace the encrypted original with a copy in clear (hosted.rs).
+    host_encrypted_original: Option<u64>,
     pub printing: printing::State,
     print_feedback_seen: Option<printing::Feedback>,
     /// Synthetic input from agents, one batch per frame (drags need several frames).
@@ -357,6 +360,7 @@ impl SheetApp {
             host_switch_allowed: false,
             host_protected_file: None,
             imports: None,
+            host_encrypted_original: None,
             printing: Default::default(),
             print_feedback_seen: None,
             synthetic: Default::default(),
@@ -424,18 +428,14 @@ impl SheetApp {
         // refused, or the person would be shown a workbook the page knows nothing about. The page's own file
         // arrives through the inbox below, which lifts the guard for it, and so does the password the person types
         // for it when it has one (hosted.rs).
-        if self.services.host_owns_documents
-            && !self.host_switch_allowed
-            && hidden_from_a_host(id)
-            && !self.opens_the_pages_protected_workbook(id, &params)
-        {
+        let protected = self.opens_the_pages_protected_workbook(id, &params);
+        if self.services.host_owns_documents && !self.host_switch_allowed && hidden_from_a_host(id) && !protected {
             return Err(self.ui.language.tr("This workbook is opened from the page that hosts the editor.").to_string());
         }
         let r = self.run_command(id, params);
-        // //// Neoffice — the page's workbook is open: its password dialog has nothing left to let through.
-        if id == "file.open" && r.is_ok() {
-            self.host_protected_file = None;
-        }
+        // //// Neoffice — the page's workbook is open: its password dialog has nothing left to let through, and when the
+        // password opened it, it is never saved back to the page (hosted.rs).
+        self.after_a_hosted_open(id, protected, r.is_ok());
         // This copy leaves the system clipboard alone: note what it holds, so Paste can tell
         // that GridCraft's copy is newer while that text is still there.
         if matches!(id, "edit.copy" | "edit.cut") && r.is_ok() {
@@ -823,6 +823,9 @@ impl SheetApp {
             // //// Neoffice — a page that opens the workbooks offers no File › Open, Home or Start: what still asks for a file
             // (Data › Get Data, `data.getData`, `data.fromTextCsv`) imports it into the page's workbook (hosted.rs).
             "open" if self.services.host_owns_documents => self.ask_for_data_to_import(),
+            // //// Neoffice — the page's workbook opened with its password is never handed back to the page in clear: Save,
+            // Save As and the title bar's Save end here, with a message bar that says why (hosted.rs).
+            "saveAs" if self.keeps_the_pages_encrypted_original() => self.refuse_to_save_in_clear(),
             "open" => {
                 if let Some(start) = &self.services.open_async {
                     start();

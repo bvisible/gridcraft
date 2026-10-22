@@ -674,6 +674,14 @@ fn typed_rows(text: &str) -> Vec<Json> {
 /// hosts the editor, or the browser's download). Never a file dialog of the computer: a workbook with
 /// no file and no such place is not saved.
 fn save(app: &mut SheetApp) -> Result<Json, String> {
+    // The page's workbook opened with its password goes back to the page in clear never (hosted.rs): Nora is told so,
+    // and the person reads it in the message bar.
+    if app.keeps_the_pages_encrypted_original() {
+        app.refuse_to_save_in_clear();
+        return Err("this workbook was opened with its password and the editor cannot save it encrypted: nothing was saved, \
+the original stays untouched"
+            .to_string());
+    }
     let d = app.session.active().ok_or_else(|| NO_WORKBOOK.to_string())?;
     let has_file = d.path.is_some();
     if !has_file && app.services.download.is_none() {
@@ -1871,5 +1879,27 @@ mod tests {
         assert_eq!(after.len(), 1, "{after:?}");
         assert!(after[0].0.ends_with("$B$2:$B$7"), "{after:?}");
         assert!(after[0].1.as_deref().is_some_and(|c| c.ends_with("$A$2:$A$7")), "{after:?}");
+    }
+
+    /// The page's workbook opened with its password is never saved back to the page in clear (hosted.rs): when Nora
+    /// asks to save it, nothing is handed over, she is told why, and the person reads it in the message bar.
+    #[test]
+    fn nora_cannot_save_the_page_s_password_protected_workbook_in_clear() {
+        let handed: Downloads = Arc::default();
+        let sent = handed.clone();
+        let mut a = app(Services {
+            host_owns_documents: true,
+            download: Some(Box::new(move |name: &str, bytes: &[u8]| {
+                sent.lock().unwrap_or_else(|e| e.into_inner()).push((name.to_string(), bytes.len()))
+            })),
+            ..Services::default()
+        });
+        a.host_encrypted_original = a.session.active().map(|d| d.uid);
+        set(&mut a, "A1", "7");
+        let error = run(&mut a, DocActionKind::Save).unwrap_err();
+        assert!(error.contains("cannot save it encrypted"), "{error}");
+        assert!(handed.lock().unwrap_or_else(|e| e.into_inner()).is_empty(), "nothing went to the page");
+        assert_eq!(a.notice.as_ref().map(|n| n.text.as_str()), Some(crate::hosted::SAVE_IN_CLEAR_REFUSED));
+        assert!(a.session.active().is_some_and(|d| d.is_dirty()), "the change stays unsaved");
     }
 }

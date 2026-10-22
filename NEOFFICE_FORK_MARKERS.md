@@ -80,7 +80,12 @@ carry their own `//// Neoffice — added file` header.
   guard in `run`, the inbox, `open_dialog` and `logic`; tests in `crates/ui-egui/tests/host_documents.rs`):
   - **the page's workbook has a password**: the inbox asks for it with the `openPassword` dialog, as for a file opened
     without a page, and the guard lets the dialog's `file.open` through for that file only, told from any other by a
-    fingerprint of its bytes. The password goes to `file.open` and nowhere else: the bridge never sees it.
+    fingerprint of its bytes. The password goes to `file.open` and nowhere else: the bridge never sees it. GridCraft
+    cannot write an encrypted workbook, so that workbook is **never handed back to the page** (the Drive would replace
+    the encrypted original with a copy in clear): Save, Save As, the title bar's Save and Nora's save send nothing
+    (`open_dialog`'s `saveAs`, the field `host_encrypted_original`; `save` in `nora_pane.rs`), a message bar says why
+    (one string, translated in `i18n/neoffice.rs` by Haiku), and the workbook stays marked as changed. Exports (PDF,
+    CSV, web page) still go to the page: they are other files and replace nothing.
   - **Data › Get Data** (and `data.getData` or `data.fromTextCsv` without a file, which ask for one): the browser's picker
     for a text, CSV or JSON file (`apps/gridcraft-web/src/host.rs`, a picker of its own whose file never reaches the inbox
     of the page's files) and the file imported into the page's workbook, in a new sheet named after it, as Excel's Get

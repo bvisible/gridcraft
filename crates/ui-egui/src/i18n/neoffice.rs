@@ -57,6 +57,10 @@ const FRENCH: &[(&str, &str)] = &[
         "Le serveur n'a pas pu répondre (erreur {status}). Réessayez dans un instant.",
     ),
     ("Nora's answer could not be read.", "La réponse de Nora n'a pas pu être lue."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Ce classeur est protégé par mot de passe : GridCraft ne sait pas l'enregistrer chiffré, l'original reste intact dans le Drive.",
+    ),
 ];
 
 /// The same in German.
@@ -106,6 +110,10 @@ const GERMAN: &[(&str, &str)] = &[
         "Der Server konnte nicht antworten (Fehler {status}). Versuchen Sie es in einem Moment erneut.",
     ),
     ("Nora's answer could not be read.", "Die Antwort von Nora konnte nicht gelesen werden."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Diese Arbeitsmappe ist durch ein Passwort geschützt: GridCraft kann sie nicht verschlüsselt speichern, daher bleibt das Original unverändert im Drive.",
+    ),
 ];
 
 /// The same in Spanish.
@@ -149,6 +157,10 @@ const SPANISH: &[(&str, &str)] = &[
         "El servidor no pudo responder (error {status}). Inténtelo de nuevo en unos instantes.",
     ),
     ("Nora's answer could not be read.", "No se pudo leer la respuesta de Nora."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Este libro está protegido con contraseña: GridCraft no puede guardarlo cifrado, así que el original permanece intacto en el Drive.",
+    ),
 ];
 
 /// The same in Brazilian Portuguese.
@@ -195,6 +207,10 @@ const PORTUGUESE: &[(&str, &str)] = &[
         "O servidor não conseguiu responder (erro {status}). Tente novamente em instantes.",
     ),
     ("Nora's answer could not be read.", "Não foi possível ler a resposta da Nora."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Esta pasta de trabalho está protegida por senha: o GridCraft não consegue salvá-la criptografada, então o original permanece intacto no Drive.",
+    ),
 ];
 
 /// The same in Russian.
@@ -241,6 +257,10 @@ const RUSSIAN: &[(&str, &str)] = &[
         "Сервер не смог ответить (ошибка {status}). Повторите попытку через некоторое время.",
     ),
     ("Nora's answer could not be read.", "Не удалось прочитать ответ Nora."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Эта книга защищена паролем: GridCraft не может сохранить её в зашифрованном виде, поэтому оригинал в Drive остаётся без изменений.",
+    ),
 ];
 
 /// The same in Czech.
@@ -281,6 +301,10 @@ const CZECH: &[(&str, &str)] = &[
     ("Your session has expired. Sign in again.", "Vaše relace vypršela. Přihlaste se znovu."),
     ("The server could not answer (error {status}). Try again in a moment.", "Server nemohl odpovědět (chyba {status}). Zkuste to za chvíli znovu."),
     ("Nora's answer could not be read.", "Odpověď Nory nebylo možné přečíst."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Tento sešit je chráněn heslem: GridCraft jej nedokáže uložit šifrovaně, takže originál na Drive zůstane nedotčen.",
+    ),
 ];
 
 /// The same in Japanese.
@@ -324,6 +348,10 @@ const JAPANESE: &[(&str, &str)] = &[
         "サーバーから応答がありませんでした（エラー {status}）。しばらくしてから再度お試しください。",
     ),
     ("Nora's answer could not be read.", "Nora の回答を読み取れませんでした。"),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "このブックはパスワードで保護されています: GridCraft は暗号化した状態で保存できないため、元のファイルは Drive 上でそのまま残ります。",
+    ),
 ];
 
 /// The same in Simplified Chinese.
@@ -361,6 +389,10 @@ const CHINESE: &[(&str, &str)] = &[
     ("Your session has expired. Sign in again.", "您的会话已过期，请重新登录。"),
     ("The server could not answer (error {status}). Try again in a moment.", "服务器无法响应（错误 {status}）。请稍后重试。"),
     ("Nora's answer could not be read.", "无法读取 Nora 的回复。"),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "此工作簿受密码保护：GridCraft 无法以加密方式保存，因此 Drive 中的原始文件保持不变。",
+    ),
 ];
 
 /// The same in Korean.
@@ -404,6 +436,10 @@ const KOREAN: &[(&str, &str)] = &[
         "서버가 응답하지 못했습니다(오류 {status}). 잠시 후 다시 시도해 주세요.",
     ),
     ("Nora's answer could not be read.", "Nora의 응답을 읽을 수 없습니다."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "이 통합 문서는 암호로 보호되어 있습니다: GridCraft는 암호화된 상태로 저장할 수 없으므로 Drive의 원본은 그대로 유지됩니다.",
+    ),
 ];
 
 /// The same in Serbian (Latin script, ekavian, as upstream's `sr.rs`).
@@ -447,6 +483,10 @@ const SERBIAN: &[(&str, &str)] = &[
         "Server nije mogao da odgovori (greška {status}). Pokušaj ponovo za trenutak.",
     ),
     ("Nora's answer could not be read.", "Norin odgovor nije bilo moguće pročitati."),
+    (
+        "This workbook is protected by a password: GridCraft can't save it encrypted, so the original stays untouched in the Drive.",
+        "Ova radna sveska je zaštićena lozinkom: GridCraft je ne može sačuvati šifrovanu, pa original na Drive ostaje netaknut.",
+    ),
 ];
 
 /// `text` in `language`, when Neoffice has translated it. English has nothing to translate.
