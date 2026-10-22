@@ -1843,4 +1843,33 @@ mod tests {
         assert!(h.query_by_label("Nora n'a pas pu être jointe. Vérifiez la connexion et réessayez.").is_some());
         assert!(h.query_by_label("No answer from Nora: TypeError: Failed to fetch").is_none());
     }
+
+    /// Rows Nora writes just below the block a chart plots stay out of the chart, as in Excel, where only a table's new
+    /// rows join the charts on it: a total row typed under a block is not plotted. She brings them in with
+    /// `chart.selectData` and the block's new address (the chart id comes back from `insert.chart`), which the pane
+    /// plays: the recipe the server's instructions give her.
+    #[test]
+    fn rows_written_below_a_chart_s_block_join_it_through_select_data() {
+        let mut a = app(Services::default());
+        let block = json!([["Month", "Sales"], ["Jan", 10], ["Feb", 12], ["Mar", 9], ["Apr", 14]]);
+        execute(&mut a, "range.setValues", json!({"range": "A1", "values": block})).unwrap();
+        let chart = execute(&mut a, "insert.chart", json!({"range": "A1:B5", "type": "column"})).unwrap()["chart"].clone();
+        assert!(chart.is_u64(), "{chart}");
+        let series = |a: &SheetApp| {
+            let charts = a.session.active().and_then(|d| d.wb.active()).map(|sh| sh.charts.clone()).unwrap_or_default();
+            charts.iter().flat_map(|c| c.series.iter().map(|s| (s.values.clone(), s.categories.clone()))).collect::<Vec<_>>()
+        };
+        let before = series(&a);
+        assert_eq!(before.len(), 1, "{before:?}");
+        assert!(before[0].0.ends_with("$B$2:$B$5"), "{before:?}");
+
+        execute(&mut a, "range.setValues", json!({"range": "A6", "values": [["May", 11], ["Jun", 16]]})).unwrap();
+        assert_eq!(series(&a), before, "a plain range keeps its chart where it was");
+
+        execute(&mut a, "chart.selectData", json!({"chart": chart, "range": "A1:B7"})).unwrap();
+        let after = series(&a);
+        assert_eq!(after.len(), 1, "{after:?}");
+        assert!(after[0].0.ends_with("$B$2:$B$7"), "{after:?}");
+        assert!(after[0].1.as_deref().is_some_and(|c| c.ends_with("$A$2:$A$7")), "{after:?}");
+    }
 }
