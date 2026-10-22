@@ -10,8 +10,10 @@
 //! Craft editor. Messages are plain objects with a `type`:
 //!
 //! - `gridcraft:ready` (to the parent): `{ version }`, the app is listening; send a file now.
-//! - `gridcraft:open` (from the parent): `{ name, bytes }`, `bytes` an `ArrayBuffer` or
+//! - `gridcraft:open` (from the parent): `{ name, bytes, id? }`, `bytes` an `ArrayBuffer` or
 //!   `Uint8Array`. It opens like a workbook picked with File › Open or dropped on the window.
+//!   Neoffice's addition: `id`, the page's own name for the file (the Drive's file id), which Nora's
+//!   pane tells Nora with each message about that workbook; a page that sends none changes nothing.
 //! - `gridcraft:save` (to the parent): `{ name, bytes }` (a transferred `ArrayBuffer`) for every
 //!   file GridCraft would otherwise download: Save and Save As (an .xlsx workbook) and the exports
 //!   (PDF, CSV, web page). The parent stores it, or offers it, by the file's extension.
@@ -50,6 +52,45 @@ const MAX_REASON_CHARS: usize = 300;
 
 /// Workbooks handed over and not yet answered that are remembered; the oldest are forgotten beyond.
 const MAX_AWAITING: usize = 32;
+
+/// Which workbook is which file of the page: the page names its file with `gridcraft:open` (`id`), and
+/// Nora's pane tells Nora that id with each message about the workbook (`nora_pane::name_file`). The id
+/// waits for its workbook: the file opens in the frame after the message, or once the person has typed
+/// its password.
+#[derive(Default)]
+struct Naming {
+    /// The id sent with the page's last file (`Some(None)`: the page named none) while that file is not open.
+    pending: Option<Option<String>>,
+    /// The workbooks open after the last frame.
+    known: Vec<u64>,
+}
+
+impl Naming {
+    /// The editor is up: the workbooks it has are none of the page's files.
+    fn start(&mut self, app: &SheetApp) {
+        self.known = uids(app);
+    }
+
+    /// After a frame: `sent` are the ids the page sent with its files since the last one (its last file is
+    /// the one that counts). The first workbook that was not open before is the page's file.
+    fn settle(&mut self, app: &mut SheetApp, sent: Vec<Option<String>>) {
+        if let Some(last) = sent.into_iter().last() {
+            self.pending = Some(last);
+        }
+        let now = uids(app);
+        if self.pending.is_some()
+            && let Some(&uid) = now.iter().rev().find(|uid| !self.known.contains(uid))
+        {
+            let id = self.pending.take().flatten();
+            gridcraft_ui_egui::nora_pane::name_file(app, uid, id.as_deref());
+        }
+        self.known = now;
+    }
+}
+
+fn uids(app: &SheetApp) -> Vec<u64> {
+    app.session.documents().iter().map(|doc| doc.uid).collect()
+}
 
 /// What the page said about a file it was handed (`gridcraft:saved`), or what the bridge found out
 /// itself when it could not hand the file over.
@@ -207,7 +248,7 @@ mod wire {
     use gridcraft_ui_egui::{Inbox, Services, SheetApp};
     use wasm_bindgen::{JsCast as _, JsValue, closure::Closure};
 
-    use super::{Answer, Ledger, file_name, set_author, unsaved};
+    use super::{Answer, Ledger, Naming, file_name, set_author, unsaved};
 
     /// What the editor and the parent said since the last frame.
     #[derive(Default)]
@@ -216,6 +257,8 @@ mod wire {
         handed: Vec<String>,
         /// What the parent answered (`gridcraft:saved`), and files that could not be handed over.
         answers: Vec<Answer>,
+        /// The page's name for each file it sent (`gridcraft:open`'s `id`), oldest first.
+        ids: Vec<Option<String>>,
     }
 
     #[derive(Clone)]
@@ -227,6 +270,8 @@ mod wire {
         ledger: Rc<RefCell<Ledger>>,
         /// The unsaved-changes state last reported to the parent.
         reported: Rc<Cell<Option<bool>>>,
+        /// Which workbook is which file of the page, for Nora's pane.
+        naming: Rc<RefCell<Naming>>,
     }
 
     impl Bridge {
@@ -249,7 +294,7 @@ mod wire {
                 log::warn!("?host=parent ignored: the page that frames this one is not of the same origin");
                 return None;
             }
-            Some(Self { window, parent, origin, mail: Rc::default(), ledger: Rc::default(), reported: Rc::default() })
+            Some(Self { window, parent, origin, mail: Rc::default(), ledger: Rc::default(), reported: Rc::default(), naming: Rc::default() })
         }
 
         /// Sends every file the editor would download to the parent instead, and hears the parent's
@@ -271,6 +316,7 @@ mod wire {
             if let Some(author) = query_param("author") {
                 set_author(app, &author);
             }
+            self.naming.borrow_mut().start(app);
             self.send(&[("type", "gridcraft:ready".into()), ("version", env!("CARGO_PKG_VERSION").into())]);
         }
 
@@ -282,10 +328,11 @@ mod wire {
         /// saved as, the parent's answers to the saves are applied, and the parent hears when unsaved
         /// changes appear or go away.
         pub fn sync(&self, app: &mut SheetApp, ctx: &egui::Context) {
-            let Mail { handed, answers } = std::mem::take(&mut *self.mail.borrow_mut());
+            let Mail { handed, answers, ids } = std::mem::take(&mut *self.mail.borrow_mut());
             if self.ledger.borrow_mut().settle(app, &handed, &answers) {
                 ctx.request_repaint();
             }
+            self.naming.borrow_mut().settle(app, ids);
             let dirty = unsaved(app);
             if self.reported.get() != Some(dirty) && self.send(&[("type", "gridcraft:dirty".into()), ("dirty", dirty.into())]) {
                 self.reported.set(Some(dirty));
@@ -325,6 +372,7 @@ mod wire {
                         let name = string(&data, "name").filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "Book.xlsx".to_string());
                         let Some(bytes) = bytes(&data) else { return };
                         inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes));
+                        mail.borrow_mut().ids.push(string(&data, "id"));
                     }
                     Some("gridcraft:saved") => {
                         let Some(name) = string(&data, "name").filter(|n| !n.trim().is_empty()) else {
@@ -686,5 +734,40 @@ mod tests {
         assert_eq!(fill("a { b } c {", &[]), "a { b } c {");
         assert_eq!(fill("", &[("a", "1")]), "");
         assert_eq!(fill("é{a}é", &[("a", "ü")]), "éüé");
+    }
+
+    /// The page's name for its file goes to the workbook that opens for it, in the frame after the message or
+    /// later (a password), never to a workbook that was open before; a page that names none names none.
+    #[test]
+    fn the_file_the_page_names_is_the_workbook_that_opens_for_it() {
+        use gridcraft_ui_egui::nora_pane::named_file;
+        let mut app = app_with(1);
+        let blank = app.session.active().map(|d| d.uid).unwrap();
+        let mut naming = Naming::default();
+        naming.start(&app);
+        naming.settle(&mut app, vec![Some("3fcaa7893c".into())]);
+        assert_eq!(named_file(&app, blank), None, "the workbook that was there is not the page's file");
+        app.session.new_workbook();
+        let opened = app.session.active().map(|d| d.uid).unwrap();
+        naming.settle(&mut app, Vec::new());
+        assert_eq!(named_file(&app, opened), Some("3fcaa7893c"), "the file opened a frame later");
+        assert_eq!(named_file(&app, blank), None);
+        // Another workbook made afterwards is no file of the page's.
+        app.session.new_workbook();
+        let other = app.session.active().map(|d| d.uid).unwrap();
+        naming.settle(&mut app, Vec::new());
+        assert_eq!(named_file(&app, other), None);
+        // A page that sends a file without a name, or a name that is none.
+        naming.settle(&mut app, vec![None]);
+        app.session.new_workbook();
+        let unnamed = app.session.active().map(|d| d.uid).unwrap();
+        naming.settle(&mut app, Vec::new());
+        assert_eq!(named_file(&app, unnamed), None);
+        naming.settle(&mut app, vec![Some("x".into()), Some("../../etc".into())]);
+        app.session.new_workbook();
+        let last = app.session.active().map(|d| d.uid).unwrap();
+        naming.settle(&mut app, Vec::new());
+        assert_eq!(named_file(&app, last), None, "the page's last file counts, and that is no id");
+        assert_eq!(named_file(&app, opened), Some("3fcaa7893c"), "the first one keeps its name");
     }
 }
