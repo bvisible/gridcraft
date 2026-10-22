@@ -10,8 +10,8 @@ At the next upstream merge, `grep -rn "////"` in the source plus this file give 
 picture of what is ours and why.
 
 - **Upstream**: `storytold/gridcraft`, branch `main`.
-- **Base of the divergence**: `fc45b7f6d8ab79ef20f74e3c8347a2fd731e6af5`, the tag `v0.6.1`, where `version-15` was cut on 2026-10-13.
-  Move it at each upstream merge. The check works it out itself (the common ancestor with
+- **Base of the divergence**: `2ebdf164c2c9c536122e0a2cffe79078b5c818ac`, the tag `v0.10.0`, merged on 2026-10-22
+  (`version-15` was cut on `fc45b7f`, the tag `v0.6.1`, on 2026-10-13). Move it at each upstream merge. The check works it out itself (the common ancestor with
   upstream's `main`), so this line is for the reader.
 
 ## What the fork adds
@@ -40,23 +40,22 @@ carry their own `//// Neoffice — added file` header.
   posts to nobody when the parent is of another origin), and a file that could not be posted counts as a
   refused save (upstream only logs it). Without `?host=parent` the editor behaves as before. What counts
   as saved and what a refusal does is plain Rust, tested off wasm (`host.rs` is built for `cfg(test)` too).
-  At the next upstream merge `host.rs` is added on both sides: take upstream's and put back what is
-  marked `//// Neoffice`; in `web.rs`, `main.rs` and `Cargo.toml` take upstream's hunks, then adapt the
-  calls (`Bridge::requested`, `connect`, `ready`, `sync(app, ctx)`).
+  Upstream added its own `host.rs` in v0.7.0 (#237), a subset of ours (same messages and `?author=`). At the
+  v0.10.0 merge ours replaced it whole (its header says so) and upstream's `query_param` left `web.rs` (a marked
+  line: ours is in `host.rs`). At a later merge, read upstream's changes to its file
+  (`git diff <old base> <new tag> -- apps/gridcraft-web/src/host.rs`) and carry them over by hand; in `web.rs`,
+  `main.rs` and `Cargo.toml` keep our calls (`Bridge::requested`, `connect`, `ready`, `sync(app, ctx)`).
 - **The French line of the bridge's message** ("Couldn't save {name}: {error}"): new file
   `crates/ui-egui/src/i18n/neoffice.rs`, which `Language::tr` falls back to after upstream's French
   catalog (two marked lines in `crates/ui-egui/src/i18n.rs`). Every other language has it too, in the same
   file, asked after its own catalog (a third marked line, added with the Nora pane below).
-- **Corrections of upstream's French catalog** (same file, `FRENCH_FIXES`, asked BEFORE the catalog): in
-  v0.6.1 about 50 entries of `i18n/fr.rs` read as the French of another English string ("File" is "Nom du
-  fichier", "Hide Detail" is "Insérer les cellules copiées"). Upstream fixed them in storytold/gridcraft
-  `c59e942` (12.10.2026); the table holds its 172 changed values (wrappings and wordings too), so
-  `fr.rs` stays untouched and a merge never conflicts with it. **Drop the table at the merge that brings
-  that commit** (the values are the same), keeping the hook line of `i18n.rs` for the strings we add.
-  Three of its values keep their key's context (`"Options|General"` is "Options|Général", `"Options|Save"`,
-  `"Sheet Options|View"`), which File › Options and the Page Layout tab showed as is: `Language::tr` shows a
-  translated `context|label` key's label alone, as it already did when falling back to English (a marked hunk in
-  `i18n.rs`, test `a_key_s_context_never_shows`). Keep it at that merge: upstream's `fr.rs` then has the same values.
+- **No more corrections of upstream's French catalog**: until the v0.10.0 merge, `neoffice.rs` held a table
+  (`FRENCH_FIXES`, asked before the catalog) with the 172 values upstream gave in storytold/gridcraft `c59e942`, for
+  the entries of v0.6.1's `fr.rs` that read as the French of another string. v0.10.0 has that commit: 169 values
+  are the same, the other three (`Options|General`, `Options|Save`, `Sheet Options|View`) were ours with their key's
+  context, which upstream writes without it, so nothing on screen changes. The table went at that merge. What stays
+  is a marked hunk in `i18n.rs` (test `a_key_s_context_never_shows`): `Language::tr` shows a translated
+  `context|label` key's label alone, as it already did when falling back to English.
 - **Cmd/Ctrl+S while a cell is being edited** (marked in `crates/ui-egui/src/formula_bar.rs`; tests in the
   new file `crates/ui-egui/tests/save_while_editing.rs`): the grid's keyboard handler ignores every key
   while an edit is open, and only the desktop app's menu bar carried the shortcut then, so in the browser
@@ -106,8 +105,10 @@ carry their own `//// Neoffice — added file` header.
   keeps nothing for the Undo either; a batch's results then come in an object, under `results`), and the pane's Undo
   takes back a whole change only while the workbook's revision is still the one the change
   left (the person's own Undo puts back the very workbook a step restores, so the steps alone can't tell). Her words
-  are translated in `crates/ui-egui/src/i18n/neoffice.rs`, every language, which `Language::tr` asks after each catalog
-  (one marked line in `crates/ui-egui/src/i18n.rs`).
+  are translated in `crates/ui-egui/src/i18n/neoffice.rs`, every language (French included, since the v0.10.0 merge
+  asked like the others, and Serbian, which v0.7.0 added), which `Language::tr` asks after each catalog (one marked
+  line in `crates/ui-egui/src/i18n.rs`). `neoffice.rs`'s `table` and the pane's `describer` and `error_worder` match
+  every `Language`: a language upstream adds does not compile until it has its table (Haiku translates it).
   The browser build connects the pane with WordCraft's transport (new file `apps/gridcraft-web/src/nora.rs`, its
   decisions plain Rust tested off wasm as `host.rs`'s, the browser part in its module `wire`; marked changes in
   `apps/gridcraft-web/src/web.rs`, `apps/gridcraft-web/src/main.rs` and the web-sys features of

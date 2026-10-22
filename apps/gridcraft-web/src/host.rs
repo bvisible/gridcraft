@@ -1,9 +1,13 @@
-// //// Neoffice — added file (no upstream equivalent): the bridge between the editor and the page that frames it.
+// //// Neoffice — added file (no upstream equivalent on 14.10, when it was written): the bridge between the editor and the
+// page that frames it. Upstream added its own `host.rs` in v0.7.0 (#237), a subset of this one: the same messages and
+// `?author=`, without `gridcraft:saved`, the same-origin check when the bridge starts, `host_owns_documents` and the
+// tests off wasm. At the v0.10.0 merge this file replaced upstream's whole; at a later merge, carry upstream's changes
+// to its file over here by hand.
 
 //! The `postMessage` bridge to a same-origin parent page (`?host=parent`), for pages that embed
 //! GridCraft in an `<iframe>` (the Drive of the Suite, NeoDesk's window). It speaks the contract
-//! upstream's own bridge uses (its `main` branch, for GridCraft and PdfCraft), so one host page
-//! drives every Craft editor. Messages are plain objects with a `type`:
+//! upstream's own bridge uses (GridCraft since v0.7.0, and PdfCraft), so one host page drives every
+//! Craft editor. Messages are plain objects with a `type`:
 //!
 //! - `gridcraft:ready` (to the parent): `{ version }`, the app is listening; send a file now.
 //! - `gridcraft:open` (from the parent): `{ name, bytes }`, `bytes` an `ArrayBuffer` or

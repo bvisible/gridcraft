@@ -16,6 +16,7 @@ mod fr;
 mod ko;
 mod pt;
 mod ru;
+mod sr;
 mod zh;
 // //// Neoffice — added module: our own interface strings, translated outside upstream's catalogs.
 mod neoffice;
@@ -35,10 +36,11 @@ pub enum Language {
     De,
     Cs,
     Fr,
+    Sr,
 }
 
 impl Language {
-    pub const ALL: [Self; 10] = [Self::En, Self::Es, Self::Zh, Self::Ja, Self::Ko, Self::Ru, Self::PtBr, Self::De, Self::Cs, Self::Fr];
+    pub const ALL: [Self; 11] = [Self::En, Self::Es, Self::Zh, Self::Ja, Self::Ko, Self::Ru, Self::PtBr, Self::De, Self::Cs, Self::Fr, Self::Sr];
 
     /// The language's own name, shown in the switcher.
     pub fn name(self) -> &'static str {
@@ -53,6 +55,7 @@ impl Language {
             Self::De => "Deutsch",
             Self::Cs => "Čeština",
             Self::Fr => "Français",
+            Self::Sr => "Srpski",
         }
     }
 
@@ -69,6 +72,7 @@ impl Language {
             Self::De => "de",
             Self::Cs => "cs",
             Self::Fr => "fr",
+            Self::Sr => "sr",
         }
     }
 
@@ -88,6 +92,7 @@ impl Language {
             "de" => Some(Self::De),
             "cs" => Some(Self::Cs),
             "fr" => Some(Self::Fr),
+            "sr" => Some(Self::Sr),
             _ => None,
         }
     }
@@ -124,12 +129,12 @@ impl Language {
             Self::PtBr => pt::translate(text),
             Self::De => de::translate(text),
             Self::Cs => cs::translate(text),
-            // //// Neoffice — `neoffice.rs` corrects upstream's French where v0.6.1 has it wrong (asked first) and says the strings we added (asked after the catalog): a merge never touches them.
-            Self::Fr => neoffice::french_fix(text).or_else(|| fr::translate(text)).or_else(|| neoffice::french(text)),
+            Self::Fr => fr::translate(text),
+            Self::Sr => sr::translate(text),
         };
-        // //// Neoffice — the strings we added (the Nora pane, the hosting page's messages) in the other languages, asked after their catalog.
+        // //// Neoffice — the strings we added (the Nora pane, the hosting page's messages) in every language, asked after its catalog (neoffice.rs).
         let translated = translated.or_else(|| neoffice::added(self, text));
-        // //// Neoffice — a `context|label` key shows its label alone when it is translated too, not only when it falls back to English: upstream's French of c59e942 (our `neoffice.rs` fixes) writes three with their context, and File › Options read "Options|Général". Upstream: `translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`.
+        // //// Neoffice — a `context|label` key shows its label alone when it is translated too, not only when it falls back to English: our table of corrections of v0.6.1's French (`neoffice.rs`, dropped at the v0.10.0 merge, whose `fr.rs` has the same labels) wrote three with their context, and File › Options read "Options|Général"; kept so that no catalog value can show a context again. Upstream: `translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`.
         let shown = translated.unwrap_or(text);
         // //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise (brand.rs).
         crate::brand::rebrand(if text.contains('|') { shown.rsplit_once('|').map_or(shown, |(_, label)| label) } else { shown })
@@ -298,6 +303,12 @@ const JAPANESE: &[(&str, &str)] = &[
     ("Select\nObjects", "オブジェクトの選択"),
     ("Themes", "テーマ"),
     ("Margins", "余白"),
+    ("Left Margin", "左余白"),
+    ("Right Margin", "右余白"),
+    ("Top Margin", "上余白"),
+    ("Bottom Margin", "下余白"),
+    ("Header Margin", "ヘッダーの余白"),
+    ("Footer Margin", "フッターの余白"),
     ("Size", "サイズ"),
     ("Print\nArea", "印刷範囲"),
     ("Set Print Area", "印刷範囲の設定"),
@@ -519,6 +530,16 @@ const JAPANESE: &[(&str, &str)] = &[
     ("Recent", "最近使ったアイテム"),
     ("No recent workbooks yet.", "最近使ったブックはまだありません。"),
     ("More workbooks", "その他のブック"),
+    ("Modified", "更新日時"),
+    ("Not available", "利用できません"),
+    ("Just now", "たった今"),
+    ("Yesterday", "昨日"),
+    ("{n} min ago", "{n} 分前"),
+    ("{n} h ago", "{n} 時間前"),
+    ("{n} days ago", "{n} 日前"),
+    ("{n} weeks ago", "{n} 週間前"),
+    ("{n} months ago", "{n} か月前"),
+    ("{n} years ago", "{n} 年前"),
     ("Browse…", "参照…"),
     ("Not saved yet", "まだ保存されていません"),
     ("Location", "場所"),
@@ -569,6 +590,7 @@ const JAPANESE: &[(&str, &str)] = &[
     ("Options|General", "全般"),
     ("Options|Save", "保存"),
     ("Show formula bar", "数式バーを表示する"),
+    ("Enable AutoComplete for cell values", "セルの値にオートコンプリートを使用する"),
     ("Save .xlsx workbooks automatically after every change", "変更のたびに .xlsx ブックを自動的に保存する"),
     ("Workbook calculation", "ブックの計算"),
     ("Enable iterative calculation", "反復計算を行う"),
@@ -595,6 +617,7 @@ mod tests {
             assert!(de::translate(english).is_some_and(|text| !text.is_empty()), "missing German: {english}");
             assert!(cs::translate(english).is_some_and(|text| !text.is_empty()), "missing Czech: {english}");
             assert!(fr::translate(english).is_some_and(|text| !text.is_empty()), "missing French: {english}");
+            assert!(sr::translate(english).is_some_and(|text| !text.is_empty()), "missing Serbian: {english}");
         }
         assert_eq!(Language::Ja.tr("Data"), "データ");
         assert_eq!(Language::Zh.tr("Data"), "数据");
@@ -624,7 +647,64 @@ mod tests {
         assert_eq!(Language::Ja.tr("Orientation"), "方向");
         assert_eq!(Language::Cs.tr("Page Layout|Orientation"), "Orientace");
         assert_eq!(Language::Cs.tr("Orientation"), "Orientace textu");
+        assert_eq!(Language::Sr.tr("Data"), "Podaci");
+        assert_eq!(Language::Sr.tr("Sheet1!A1"), "Sheet1!A1");
+        assert_eq!(Language::Sr.tr("Page Layout|Orientation"), "Orijentacija");
+        assert_eq!(Language::Sr.tr("Orientation"), "Orijentacija");
         assert_eq!(Language::parse("xx"), None);
+    }
+
+    #[test]
+    fn german_cell_and_header_context_menus_are_fully_translated() {
+        for label in [
+            "Cut",
+            "Copy",
+            "Paste",
+            "Paste Special…",
+            "Insert…",
+            "Delete…",
+            "Clear Contents",
+            "Filter by Selected Cell's Value",
+            "Sort A to Z",
+            "Sort Z to A",
+            "New Comment",
+            "New Note",
+            "Format Cells…",
+            "Pick From Drop-down List…",
+            "Define Name…",
+            "Insert Copied Cells",
+            "Insert Copied Cells…",
+            "Insert Cut Cells",
+            "Insert",
+            "Delete",
+            "Row Height…",
+            "AutoFit Row Height",
+            "Column Width…",
+            "AutoFit Column Width",
+            "Hide",
+            "Unhide",
+            "Group",
+        ] {
+            assert_ne!(Language::De.tr(label), label, "German context menu label missing: {label}");
+        }
+    }
+
+    #[test]
+    fn translations_never_show_the_context_prefix() {
+        // `tr` returns a found translation as it is, so a catalog that keeps `context|` in its
+        // value shows it on screen (File › Options read "Options|Général" in French).
+        for language in Language::ALL {
+            for (english, _) in JAPANESE {
+                let shown = language.tr(english);
+                assert!(!shown.contains('|'), "{} shows a context prefix for {english}: {shown}", language.code());
+            }
+        }
+        assert_eq!(Language::Fr.tr("Options|General"), "Général");
+        assert_eq!(Language::Fr.tr("Options|Save"), "Enregistrer");
+        assert_eq!(Language::Fr.tr("Sheet Options|View"), "Affichage");
+        assert_eq!(Language::Sr.tr("Options|General"), "Opšte");
+        assert_eq!(Language::Sr.tr("Options|Save"), "Sačuvaj");
+        assert_eq!(Language::Sr.tr("Sheet Options|View"), "Prikaz");
     }
 
     #[test]
@@ -662,6 +742,9 @@ mod tests {
         assert_eq!(Language::from_tag("fr-FR"), Some(Language::Fr));
         assert_eq!(Language::from_tag("fr_CA"), Some(Language::Fr));
         assert_eq!(Language::parse("fr"), Some(Language::Fr));
+        assert_eq!(Language::from_tag("sr-Latn-RS"), Some(Language::Sr));
+        assert_eq!(Language::from_tag("sr-RS"), Some(Language::Sr));
+        assert_eq!(Language::parse("sr"), Some(Language::Sr));
     }
 
     #[test]

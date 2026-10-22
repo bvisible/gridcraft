@@ -105,6 +105,9 @@ fn query() -> String {
     web_sys::window().and_then(|w| w.location().search().ok()).unwrap_or_default()
 }
 
+// //// Neoffice — upstream's `query_param` is not here: our bridge reads `?host` and `?author` itself (host.rs, `wire::query_param`)
+// and flags.rs reads the other flags, so this one would be dead code (a clippy error with `-D warnings`).
+
 struct WebShell {
     app: SheetApp,
     inbox: Inbox,
@@ -196,8 +199,10 @@ fn services(inbox: Inbox, ctx: egui::Context) -> Services {
             }
         })),
         open_url: Some(Box::new(|url: &str| {
-            if let Some(w) = web_sys::window() {
-                let _ = w.open_with_url_and_target(url, "_blank");
+            if let Some(w) = web_sys::window()
+                && let gridcraft_engine::links::LinkKind::External(url) = gridcraft_engine::links::classify(url)
+            {
+                let _ = w.open_with_url_and_target(&url, "_blank");
             }
         })),
         inbox: Some(inbox),
