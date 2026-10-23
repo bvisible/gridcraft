@@ -32,11 +32,12 @@ jobs:
       RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # //// Neoffice — the cell fonts of the browser build (23.10). Without them it drew every cell in egui's Ubuntu
-      # Light, a bold cell like the others: a wasm build has no font files to read. crates/ui-egui/build.rs embeds
-      # Carlito's four faces (metric-compatible with Calibri) from this checkout, the commit NeoPrés' web build pins
-      # (the first with craft-fonts' Latin fonts), and packaging/env.sh puts the licences in the zip.
-      - name: Check out craft-fonts (Carlito, the cell fonts of the browser build)
+      # //// Neoffice — the fonts of the browser build (23.10). Without them it drew every cell in egui's Ubuntu Light,
+      # a bold cell like the others, and its interface had no bold face: a wasm build has no font files to read.
+      # crates/ui-egui/build.rs embeds Carlito's four faces (metric-compatible with Calibri) for the cells and Inter
+      # Regular and Bold for the interface from this checkout, the commit NeoPrés' web build pins (the first with
+      # craft-fonts' Latin fonts), and packaging/env.sh puts the licences in the zip.
+      - name: Check out craft-fonts (Carlito and Inter, the fonts of the browser build)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: storytold/craft-fonts

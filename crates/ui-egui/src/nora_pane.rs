@@ -968,8 +968,9 @@ fn style(ui: &Ui) -> NoraStyle {
         user_text: Some(on_accent),
         nora_fill: Some(t.hover),
         nora_text: Some(t.text),
-        // No `bold_family`: a web build embeds no bold interface face here (the bold family draws the regular one),
-        // so the pane draws Nora's bold words twice, a pixel apart.
+        // //// Neoffice — Nora's bold words in the interface's bold face, when it has one of its own (a system one, or the
+        // //// browser build's Inter Bold, theme::has_ui_bold_face); without one, drawn twice a pixel apart (`None`).
+        bold_family: theme::has_ui_bold_face().then_some(theme::UI_BOLD),
         ..NoraStyle::default()
     }
 }

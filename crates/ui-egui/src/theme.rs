@@ -242,13 +242,24 @@ fn try_load(_paths: &[(&str, u32)]) -> Option<FontData> {
     None
 }
 
-// //// Neoffice — the cell faces a browser build embeds, `(role, bytes)` (build.rs `web_fonts`: Carlito from craft-fonts
-// //// when CRAFT_FONTS_DIR is set for a wasm build). Empty everywhere else, so a native build is unchanged.
+// //// Neoffice — the faces a browser build embeds, `(role, bytes)` (build.rs `web_fonts`: Carlito for the cells and Inter
+// //// for the interface, from craft-fonts, when CRAFT_FONTS_DIR is set for a wasm build). Empty everywhere else, so a
+// //// native build is unchanged.
 include!(concat!(env!("OUT_DIR"), "/web_fonts.rs"));
 
 // //// Neoffice — the embedded face of a role, when the build has one (see WEB_FONTS).
 fn web_font(role: &str) -> Option<FontData> {
     WEB_FONTS.iter().find(|(name, _)| *name == role).map(|(_, bytes)| FontData::from_static(bytes))
+}
+
+// //// Neoffice — whether the interface's bold family has a bold face of its own (a system one, or the browser build's
+// //// embedded Inter Bold), set by each font_definitions_with. Without one it draws the regular face, and Nora's pane
+// //// then draws its bold words twice instead (nora_pane::style).
+static UI_BOLD_FACE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+// //// Neoffice — see UI_BOLD_FACE.
+pub fn has_ui_bold_face() -> bool {
+    UI_BOLD_FACE.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 fn home_fonts(file: &str) -> String {
@@ -447,6 +458,8 @@ pub fn font_definitions_with(language: crate::i18n::Language, used: &[String]) -
         fonts.families.insert(FontFamily::Proportional, ui);
     }
     drop_unparseable_fonts(&mut fonts);
+    // //// Neoffice — the bold family has a face of its own only when its role loaded one (see UI_BOLD_FACE).
+    UI_BOLD_FACE.store(fonts.font_data.contains_key(&format!("sys-{UI_BOLD}")), std::sync::atomic::Ordering::Relaxed);
     // Only families egui still has data for count as bound (a dropped face can empty a chain).
     bound.retain(|f| fonts.families.get(&FontFamily::Name(f.as_str().into())).is_some_and(|c| !c.is_empty()));
     crate::fonts::set_bound(bound);

@@ -28,12 +28,13 @@ fn main() {
     web_fonts();
 }
 
-// //// Neoffice — the cell fonts of a browser build (OUT_DIR/web_fonts.rs, read by theme.rs). A wasm build has no font
-// //// files to read, so every cell was drawn in egui's Ubuntu Light, and a bold cell like the others. With
-// //// CRAFT_FONTS_DIR (the craft-fonts checkout of neoffice-web.yml, the optional build input AGENTS.md names), Carlito's
-// //// four faces, metric-compatible with Calibri, the default cell font of a workbook, are embedded for the four cell
-// //// roles (2.7 MB); CRAFT_FONTS_REQUIRED makes a missing face an error rather than a build without it. A native build,
-// //// or one without the variable, embeds nothing: the table is empty.
+// //// Neoffice — the fonts of a browser build (OUT_DIR/web_fonts.rs, read by theme.rs). A wasm build has no font files
+// //// to read, so every cell was drawn in egui's Ubuntu Light, a bold cell like the others, and the interface had no bold
+// //// face either (Nora's pane drew its bold words twice). With CRAFT_FONTS_DIR (the craft-fonts checkout of
+// //// neoffice-web.yml, the optional build input AGENTS.md names), Carlito's four faces, metric-compatible with Calibri,
+// //// the default cell font of a workbook, are embedded for the four cell roles (2.7 MB), and Inter Regular and Bold for
+// //// the interface (0.8 MB, NeoPres' interface font); CRAFT_FONTS_REQUIRED makes a missing face an error rather than a
+// //// build without it. A native build, or one without the variable, embeds nothing: the table is empty.
 fn web_fonts() {
     println!("cargo::rerun-if-env-changed=CRAFT_FONTS_DIR");
     println!("cargo::rerun-if-env-changed=CRAFT_FONTS_REQUIRED");
@@ -41,14 +42,18 @@ fn web_fonts() {
     let mut src = String::from("pub(crate) static WEB_FONTS: &[(&str, &[u8])] = &[\n");
     if let Some(dir) = std::env::var_os("CRAFT_FONTS_DIR").map(std::path::PathBuf::from).filter(|_| wasm) {
         let required = std::env::var_os("CRAFT_FONTS_REQUIRED").is_some();
+        // //// Neoffice — Carlito for the cells, Inter for the interface: (role, file under the checkout's fonts/).
         let faces = [
-            ("cell", "Carlito-Regular.ttf"),
-            ("cell-bold", "Carlito-Bold.ttf"),
-            ("cell-italic", "Carlito-Italic.ttf"),
-            ("cell-bold-italic", "Carlito-BoldItalic.ttf"),
+            ("cell", "carlito/Carlito-Regular.ttf"),
+            ("cell-bold", "carlito/Carlito-Bold.ttf"),
+            ("cell-italic", "carlito/Carlito-Italic.ttf"),
+            ("cell-bold-italic", "carlito/Carlito-BoldItalic.ttf"),
+            ("ui", "inter/Inter-Regular.ttf"),
+            ("ui-bold", "inter/Inter-Bold.ttf"),
         ];
         for (role, file) in faces {
-            let path = dir.join("fonts/carlito").join(file);
+            // //// Neoffice — see web_fonts.
+            let path = dir.join("fonts").join(file);
             println!("cargo::rerun-if-changed={}", path.display());
             match path.canonicalize() {
                 Ok(found) => {
