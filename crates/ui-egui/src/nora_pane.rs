@@ -27,6 +27,11 @@
 //! - *Save*: the title bar's Save.
 //! - *RenderPage*: NeoSheet cannot draw a sheet as a picture without a window, so the action answers
 //!   an error that says it does not exist here.
+//! - *Print*: the workbook's PDF, as File › Print lays it out, in the browser's print dialog; where the editor has
+//!   printers of its own (`print_native`), the Print page opens instead. The dialog is the person's yes.
+//! - *ExportPdf*, *ExportFile*: the workbook's PDF, or the workbook in its own format as it is now, handed to Nora for
+//!   an e-mail draft (`craft_nora::protocol::pdf_result`, `file_result`); never the page's workbook opened with its
+//!   password, which would leave in clear.
 //!
 //! What the person is typing is entered before any action. An action that fails leaves the workbook as
 //! it was, its history included. What Nora changed is undone a whole action at a time, and only while
@@ -262,7 +267,12 @@ fn show(app: &mut SheetApp, ui: &mut Ui) {
             // A new conversation forgets what the last one changed, as the session does.
             PanelAction::NewConversation => app.nora.changes.clear(),
             // A Stop ends Nora's turn in the conversation; what the workbook already ran stays hers to undo.
-            PanelAction::Confirm { .. } | PanelAction::Undo | PanelAction::Stop | PanelAction::OpenLink(_) | PanelAction::AnswerCard { .. } => {}
+            PanelAction::Confirm { .. }
+            | PanelAction::Undo
+            | PanelAction::Stop
+            | PanelAction::OpenLink(_)
+            | PanelAction::AnswerCard { .. }
+            | PanelAction::ChooseOnCard { .. } => {}
         }
         outputs.extend(app.nora.session.handle(action.into_input()));
     }
@@ -410,9 +420,12 @@ fn revision(app: &SheetApp, uid: u64) -> Option<u64> {
     app.session.documents().iter().find(|d| d.uid == uid).map(|d| d.revision)
 }
 
-/// What Nora is told when she asks this pane to print or for the workbook's PDF: the words the server reads as an editor
-/// that does not do it (it then tells the person to use File, Print or Export).
-const NOT_HERE_YET: &str = "this is not available in the editor yet: NeoGrille prints with File, Print and exports with File, Export";
+/// What Nora is told when she asks for the print dialog where the editor has none: the words the server reads as an
+/// editor that does not do it (it then tells the person to use File, Print or Export).
+const NO_PRINT_DIALOG: &str = "printing is not available in the editor here: the person prints with File, Print";
+/// What Nora is told when she asks for the page's password-protected workbook for an e-mail: it would leave in clear.
+const PROTECTED_STAYS: &str = "this workbook was opened with its password: it is never handed over in clear for an e-mail, the person joins \
+it from NeoMail";
 
 fn apply(app: &mut SheetApp, kind: &DocActionKind, steps: &mut Vec<Weak<Workbook>>) -> Result<Json, String> {
     match kind {
@@ -424,9 +437,61 @@ fn apply(app: &mut SheetApp, kind: &DocActionKind, steps: &mut Vec<Weak<Workbook
         DocActionKind::RenderPage { .. } => Err(NO_RENDER.to_string()),
         DocActionKind::Save => save(app),
         DocActionKind::Undo => undo(app),
-        // Printing and the PDF for an e-mail are NeoDoc's for now (its letters): the server says what to do instead.
-        DocActionKind::Print | DocActionKind::ExportPdf => Err(NOT_HERE_YET.to_string()),
+        DocActionKind::Print => print(app),
+        DocActionKind::ExportPdf => export_pdf(app),
+        DocActionKind::ExportFile => export_file(app),
     }
+}
+
+/// The print dialog on the workbook: the browser's, on its PDF as File › Print lays it out (`file.print`), or, where
+/// the editor has printers of its own, its Print page, where the person picks one and prints. Nothing reaches a printer
+/// before the person says so.
+fn print(app: &mut SheetApp) -> Result<Json, String> {
+    if app.services.print_native.is_some() {
+        app.open_backstage(crate::backstage::Page::Print);
+        return Ok(json!({"dialog": true, "page": "print"}));
+    }
+    if app.services.print.is_none() {
+        return Err(NO_PRINT_DIALOG.to_string());
+    }
+    app.submit_print(json!({}))?;
+    Ok(json!({"dialog": true}))
+}
+
+/// The workbook's PDF, as File › Export › PDF makes it, handed to Nora for an e-mail draft: made by the engine itself,
+/// so that nothing is downloaded on the way (the menu's export hands its PDF to the browser).
+fn export_pdf(app: &mut SheetApp) -> Result<Json, String> {
+    if app.keeps_the_pages_encrypted_original() {
+        return Err(PROTECTED_STAYS.to_string());
+    }
+    let d = app.session.active().ok_or_else(|| NO_WORKBOOK.to_string())?;
+    let name = format!("{}.pdf", stem_of(&d.display_title()));
+    let made = app.session.run("file.exportPdf", json!({}))?;
+    let bytes = made
+        .get("base64")
+        .and_then(Json::as_str)
+        .and_then(gridcraft_engine::io::base64_decode)
+        .ok_or_else(|| "the workbook could not be made into a PDF".to_string())?;
+    craft_nora::protocol::pdf_result(&name, &bytes)
+}
+
+/// The workbook in its own format (the page's file's: `.xlsx`…), as it is now with what was not saved yet, handed to
+/// Nora for an e-mail draft. Nothing is saved.
+fn export_file(app: &mut SheetApp) -> Result<Json, String> {
+    if app.keeps_the_pages_encrypted_original() {
+        return Err(PROTECTED_STAYS.to_string());
+    }
+    let d = app.session.active().ok_or_else(|| NO_WORKBOOK.to_string())?;
+    let title = d.display_title();
+    // A workbook never saved has a title without a format (« Book1 »): it goes as a workbook.
+    let name = if std::path::Path::new(&title).extension().is_some() { title } else { format!("{title}.xlsx") };
+    let bytes = gridcraft_engine::io::save_bytes(&d.wb, &name).map_err(|e| format!("the workbook could not be written as {name}: {e}"))?;
+    craft_nora::protocol::file_result(&name, &bytes)
+}
+
+/// A file name without its extension (`Ventes.xlsx` → `Ventes`).
+fn stem_of(name: &str) -> String {
+    std::path::Path::new(name).file_stem().and_then(|s| s.to_str()).filter(|s| !s.is_empty()).unwrap_or("Workbook").to_string()
 }
 
 /// One command of Nora's, run as GridCraft's MCP tools run it ([`gridcraft_engine::Session::execute`]):
@@ -985,7 +1050,7 @@ fn describe(language: Language, kind: &DocActionKind) -> String {
         DocActionKind::RenderPage { page, .. } => language.tr("Look at page {page}").replace("{page}", &page.to_string()),
         DocActionKind::Save => language.tr("Save the workbook").to_string(),
         DocActionKind::Undo => language.tr("Undo the last change").to_string(),
-        DocActionKind::Print | DocActionKind::ExportPdf => kind.summary(),
+        DocActionKind::Print | DocActionKind::ExportPdf | DocActionKind::ExportFile => kind.summary(),
     }
 }
 
@@ -1966,6 +2031,62 @@ mod tests {
         assert!(handed.lock().unwrap_or_else(|e| e.into_inner()).is_empty(), "nothing went to the page");
         assert_eq!(a.notice.as_ref().map(|n| n.text.as_str()), Some(crate::hosted::SAVE_IN_CLEAR_REFUSED));
         assert!(a.session.active().is_some_and(|d| d.is_dirty()), "the change stays unsaved");
+    }
+
+    /// Nora's print opens the browser's print dialog on the workbook's PDF, through the host's `print`; a host without
+    /// one is told so, and nothing is printed.
+    #[test]
+    fn nora_s_print_opens_the_print_dialog_on_the_workbook_s_pdf() {
+        let printed: Arc<Mutex<Vec<usize>>> = Arc::default();
+        let got = printed.clone();
+        let mut a = app(Services {
+            print: Some(Box::new(move |bytes: &[u8]| {
+                assert!(bytes.starts_with(b"%PDF-"));
+                got.lock().unwrap_or_else(|e| e.into_inner()).push(bytes.len())
+            })),
+            ..Services::default()
+        });
+        set(&mut a, "A1", "7");
+        let result = run(&mut a, DocActionKind::Print).unwrap();
+        assert_eq!(result["dialog"], true, "{result}");
+        assert_eq!(printed.lock().unwrap_or_else(|e| e.into_inner()).len(), 1);
+        let mut bare = app(Services::default());
+        set(&mut bare, "A1", "7");
+        assert!(run(&mut bare, DocActionKind::Print).unwrap_err().contains("not available"));
+    }
+
+    /// For an e-mail draft Nora is handed the workbook's PDF and the workbook in its format, as they are now: nothing is
+    /// downloaded on the way, nothing is saved, and the page's password-protected workbook is never handed in clear.
+    #[test]
+    fn nora_is_handed_the_workbook_s_pdf_and_file_without_a_download_or_a_save() {
+        let handed: Downloads = Arc::default();
+        let sent = handed.clone();
+        let services = |sent: Downloads| Services {
+            host_owns_documents: true,
+            download: Some(Box::new(move |name: &str, bytes: &[u8]| {
+                sent.lock().unwrap_or_else(|e| e.into_inner()).push((name.to_string(), bytes.len()))
+            })),
+            ..Services::default()
+        };
+        let mut a = app(services(sent));
+        set(&mut a, "A1", "7");
+        let pdf = run(&mut a, DocActionKind::ExportPdf).unwrap();
+        assert!(pdf["name"].as_str().is_some_and(|n| n.ends_with(".pdf")), "{pdf}");
+        let bytes = gridcraft_engine::io::base64_decode(pdf["data"].as_str().unwrap_or_default()).unwrap_or_default();
+        assert!(bytes.starts_with(b"%PDF-"));
+        let file = run(&mut a, DocActionKind::ExportFile).unwrap();
+        assert!(file["name"].as_str().is_some_and(|n| n.ends_with(".xlsx")), "{file}");
+        let bytes = gridcraft_engine::io::base64_decode(file["data"].as_str().unwrap_or_default()).unwrap_or_default();
+        assert!(bytes.starts_with(b"PK"), "a workbook package");
+        assert_eq!(file["size"], bytes.len());
+        assert!(handed.lock().unwrap_or_else(|e| e.into_inner()).is_empty(), "nothing went to the browser or the page");
+        assert!(a.session.active().is_some_and(|d| d.is_dirty()), "nothing was saved");
+        let mut protected = app(services(Arc::default()));
+        protected.host_encrypted_original = protected.session.active().map(|d| d.uid);
+        set(&mut protected, "A1", "7");
+        for kind in [DocActionKind::ExportPdf, DocActionKind::ExportFile] {
+            assert!(run(&mut protected, kind).unwrap_err().contains("never handed over in clear"));
+        }
     }
 
     /// The page that hosts the editor names the file a workbook is: Nora is told its id with each message about that
