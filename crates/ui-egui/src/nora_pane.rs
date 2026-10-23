@@ -968,8 +968,8 @@ fn style(ui: &Ui) -> NoraStyle {
         user_text: Some(on_accent),
         nora_fill: Some(t.hover),
         nora_text: Some(t.text),
-        // The pane's bold words in the app's own bold face.
-        bold_family: Some(crate::theme::UI_BOLD),
+        // No `bold_family`: a web build embeds no bold interface face here (the bold family draws the regular one),
+        // so the pane draws Nora's bold words twice, a pixel apart.
         ..NoraStyle::default()
     }
 }
