@@ -963,7 +963,15 @@ fn selection_text(d: &DocState, sh: &Sheet) -> String {
 fn style(ui: &Ui) -> NoraStyle {
     let t = Tokens::get(ui.ctx());
     let on_accent = if t.dark { t.window } else { Color32::WHITE };
-    NoraStyle { user_fill: Some(t.accent), user_text: Some(on_accent), nora_fill: Some(t.hover), nora_text: Some(t.text), ..NoraStyle::default() }
+    NoraStyle {
+        user_fill: Some(t.accent),
+        user_text: Some(on_accent),
+        nora_fill: Some(t.hover),
+        nora_text: Some(t.text),
+        // The pane's bold words in the app's own bold face.
+        bold_family: Some(crate::theme::UI_BOLD),
+        ..NoraStyle::default()
+    }
 }
 
 /// The words of the pane in the interface language. The pane's title bar is GridCraft's own, so the
