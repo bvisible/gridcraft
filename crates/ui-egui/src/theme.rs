@@ -242,6 +242,15 @@ fn try_load(_paths: &[(&str, u32)]) -> Option<FontData> {
     None
 }
 
+// //// Neoffice — the cell faces a browser build embeds, `(role, bytes)` (build.rs `web_fonts`: Carlito from craft-fonts
+// //// when CRAFT_FONTS_DIR is set for a wasm build). Empty everywhere else, so a native build is unchanged.
+include!(concat!(env!("OUT_DIR"), "/web_fonts.rs"));
+
+// //// Neoffice — the embedded face of a role, when the build has one (see WEB_FONTS).
+fn web_font(role: &str) -> Option<FontData> {
+    WEB_FONTS.iter().find(|(name, _)| *name == role).map(|(_, bytes)| FontData::from_static(bytes))
+}
+
 fn home_fonts(file: &str) -> String {
     let home = std::env::var("HOME").unwrap_or_default();
     format!("{home}/Library/Fonts/{file}")
@@ -398,7 +407,9 @@ pub fn font_definitions_with(language: crate::i18n::Language, used: &[String]) -
         let paths = candidates(role);
         let refs: Vec<(&str, u32)> = paths.iter().map(|(p, i)| (p.as_str(), *i)).collect();
         let mut chain: Vec<String> = Vec::new();
-        if let Some(fd) = try_load(&refs) {
+        // //// Neoffice — a browser build reads no font file: its embedded cell faces stand in (web_font). Without
+        // //// them every cell was drawn in egui's Ubuntu Light, a bold header like the rest.
+        if let Some(fd) = try_load(&refs).or_else(|| web_font(role)) {
             let key = format!("sys-{role}");
             fonts.font_data.insert(key.clone(), Arc::new(fd));
             chain.push(key);
