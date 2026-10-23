@@ -6,6 +6,26 @@ use gridcraft_core::date::{MONTHS, WEEKDAYS, datetime_from_serial, max_serial};
 use crate::decimal::{decimal_digits, fixed, fixed_from_digits, format_general_fit};
 use crate::parse::{DatePart, Section, Tok};
 
+// //// Neoffice — the thousands separator a shown number carries (lib.rs `format_value_grouped`): `,` unless the
+// //// display asks for its locale's (`'` in Switzerland). Read by the two digit fillers below; TEXT() and every other
+// //// caller keep `,`, so nothing computed or saved depends on who looks.
+thread_local! {
+    static GROUPING: std::cell::Cell<char> = const { std::cell::Cell::new(',') };
+}
+
+// //// Neoffice — runs `f` with `sep` as the thousands separator, then puts the previous one back.
+pub(crate) fn with_grouping<T>(sep: char, f: impl FnOnce() -> T) -> T {
+    let before = GROUPING.with(|g| g.replace(sep));
+    let out = f();
+    GROUPING.with(|g| g.set(before));
+    out
+}
+
+// //// Neoffice — see GROUPING.
+fn grouping() -> char {
+    GROUPING.with(std::cell::Cell::get)
+}
+
 /// Text being built plus the first repeat-fill position.
 #[derive(Default)]
 pub(crate) struct Out {
@@ -156,7 +176,7 @@ fn fill_int(toks: &[Tok], idxs: &[usize], digits: &str, thousands: bool, force_z
         let mut rev = String::new();
         let push_digit = |c: char, rev: &mut String, pos: &mut usize| {
             if thousands && *pos > 0 && pos.is_multiple_of(3) {
-                rev.push(',');
+                rev.push(grouping()); // //// Neoffice — the display's separator (GROUPING), `,` by default
             }
             rev.push(c);
             *pos += 1;
@@ -195,7 +215,7 @@ fn with_commas(digits: &str, thousands: bool) -> String {
     let mut s = String::with_capacity(n + n / 3);
     for (i, c) in digits.chars().enumerate() {
         if i > 0 && (n - i).is_multiple_of(3) {
-            s.push(',');
+            s.push(grouping()); // //// Neoffice — the display's separator (GROUPING), `,` by default
         }
         s.push(c);
     }

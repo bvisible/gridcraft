@@ -15,6 +15,9 @@ pub struct Flags {
     /// `?nora` or `?nora=<origin>`: the value as given, empty for a bare `?nora` (see
     /// `nora::origin_from_url`).
     pub nora: Option<String>,
+    /// `?locale=fr-CH`: the locale of the hosting page, whose region chooses the thousands separator of the numbers
+    /// shown (`number_locale`); the browser's otherwise.
+    pub locale: Option<String>,
 }
 
 impl Flags {
@@ -25,6 +28,7 @@ impl Flags {
             webgl: get("webgl").is_some(),
             sample: get("sample").map(|name| if name.trim().is_empty() { "sales".to_string() } else { name }),
             nora: get("nora"),
+            locale: get("locale"),
         }
     }
 
@@ -57,6 +61,8 @@ mod tests {
         assert_eq!(read("?host=parent&author=webgl-fan"), Flags::default());
         // The flags themselves.
         assert_eq!(read("?webgl"), Flags { webgl: true, ..Flags::default() });
+        // //// Neoffice — the hosting page's locale (number_locale).
+        assert_eq!(read("?host=parent&locale=fr-CH"), Flags { locale: Some("fr-CH".into()), ..Flags::default() });
         assert_eq!(read("?sample"), Flags { sample: Some("sales".into()), ..Flags::default() });
         assert_eq!(read("?sample=budget&nora"), Flags { sample: Some("budget".into()), nora: Some(String::new()), ..Flags::default() });
         assert_eq!(read(""), Flags::default());

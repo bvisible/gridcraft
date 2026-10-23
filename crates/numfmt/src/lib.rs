@@ -304,8 +304,34 @@ impl NumberFormat {
     }
 }
 
+// //// Neoffice — the thousands separator of the numbers shown, `,` until the editor names its locale's
+// //// (`set_display_grouping`, ui-egui `number_locale`): `#,##0` asks for the locale's separator, as in Excel, whose
+// //// regional settings choose it. Only what is shown changes (format_value); TEXT() keeps `,`.
+static DISPLAY_GROUPING: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(',' as u32);
+
+// //// Neoffice — see DISPLAY_GROUPING.
+pub fn set_display_grouping(sep: char) {
+    DISPLAY_GROUPING.store(sep as u32, std::sync::atomic::Ordering::Relaxed);
+}
+
+// //// Neoffice — see DISPLAY_GROUPING.
+pub fn display_grouping() -> char {
+    char::from_u32(DISPLAY_GROUPING.load(std::sync::atomic::Ordering::Relaxed)).unwrap_or(',')
+}
+
 /// Formats a cell value for display.
+// //// Neoffice — with the display's thousands separator (DISPLAY_GROUPING).
 pub fn format_value(v: &Value, fmt: &NumberFormat, sys: DateSystem) -> Formatted {
+    format_value_grouped(v, fmt, sys, display_grouping())
+}
+
+// //// Neoffice — format_value with `sep` as the thousands separator.
+pub fn format_value_grouped(v: &Value, fmt: &NumberFormat, sys: DateSystem, sep: char) -> Formatted {
+    render::with_grouping(sep, || format_value_upstream(v, fmt, sys))
+}
+
+// //// Neoffice — upstream's format_value, renamed: the separator is set around it.
+fn format_value_upstream(v: &Value, fmt: &NumberFormat, sys: DateSystem) -> Formatted {
     match v {
         Value::Empty => Formatted::default(),
         Value::Number(n) if !n.is_finite() => Formatted { text: CellError::Num.as_str().into(), ..Formatted::default() },
@@ -315,7 +341,7 @@ pub fn format_value(v: &Value, fmt: &NumberFormat, sys: DateSystem) -> Formatted
         Value::Error(e) => Formatted { text: e.as_str().into(), ..Formatted::default() },
         Value::Array(a) => match a.data.first() {
             Some(Value::Array(_)) | None => Formatted::default(),
-            Some(first) => format_value(first, fmt, sys),
+            Some(first) => format_value_upstream(first, fmt, sys), // //// Neoffice — inside the separator already set
         },
     }
 }

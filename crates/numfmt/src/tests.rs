@@ -864,3 +864,19 @@ fn closed_brackets_still_hold_their_semicolons() {
     assert_eq!(f("0\\[0", 5.0), "0[5");
     assert_eq!(f("\"[\"0;0", 5.0), "[5");
 }
+
+// //// Neoffice — the display's thousands separator (lib.rs DISPLAY_GROUPING): `#,##0` asks for the locale's separator, and
+// //// a Swiss display shows an apostrophe; TEXT() and a display that asked for nothing keep the comma.
+#[test]
+fn a_swiss_display_groups_thousands_with_an_apostrophe() {
+    let shown = |code: &str, n: f64, sep: char| format_value_grouped(&Value::Number(n), &NumberFormat::parse(code), S, sep).text;
+    assert_eq!(shown("[$CHF-100C] #,##0.00", 5478.45, '\''), "CHF 5'478.45");
+    assert_eq!(shown("[$CHF-100C] #,##0.00", 128016.3, '\''), "CHF 128'016.30");
+    assert_eq!(shown("#,##0;(#,##0)", -1234567.0, '\''), "(1'234'567)");
+    assert_eq!(shown("#,##0.00", 999.5, '\''), "999.50", "no separator under a thousand");
+    assert_eq!(shown("#,##0,", 1234567.0, '\''), "1'235", "a trailing comma still scales by a thousand");
+    assert_eq!(shown("#,###", 1234567.0, '\''), "1'234'567");
+    assert_eq!(shown("[$CHF-100C] #,##0.00", 5478.45, ','), "CHF 5,478.45");
+    assert_eq!(text_function(&Value::Number(5478.45), "#,##0.00", S), Ok("5,478.45".into()), "TEXT() keeps the comma");
+    assert_eq!(f("#,##0.00", 5478.45), "5,478.45", "until the editor names its locale, the display keeps the comma");
+}

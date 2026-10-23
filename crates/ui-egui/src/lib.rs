@@ -28,6 +28,8 @@ pub mod i18n;
 pub mod icons;
 pub mod keymap;
 pub mod keytips;
+// //// Neoffice — added module: the thousands separator of the numbers shown, from the editor's locale.
+pub mod number_locale;
 // //// Neoffice — added module: the Nora assistant pane, Neoffice's assistant built on craft-nora and craft-nora-ui (WordCraft's).
 pub mod nora_pane;
 pub mod outline;

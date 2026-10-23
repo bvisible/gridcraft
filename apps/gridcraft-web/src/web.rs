@@ -70,6 +70,9 @@ pub fn start() {
                         app.ui.language = browser;
                     }
                     SheetApp::setup_context_for_language(&cc.egui_ctx, false, app.ui.language);
+                    // //// Neoffice — numbers shown with the thousands separator of the hosting page's locale (`?locale=`), else
+                    // the browser's: `CHF 5'478.45` in Switzerland (number_locale).
+                    gridcraft_ui_egui::number_locale::apply(flags.locale.as_deref());
                     // //// Neoffice — the hosting page learns the editor listens; `?author=` names the user who signs notes and comments.
                     if let Some(bridge) = &app_bridge {
                         bridge.ready(&mut app);

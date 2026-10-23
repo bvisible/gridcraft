@@ -103,6 +103,8 @@ fn load_prefs(app: &mut SheetApp) {
     }
     // First run (or a ui.json without a usable language): follow the desktop's language.
     app.ui.language = gridcraft_ui_egui::i18n::Language::system();
+    // //// Neoffice — numbers shown with the thousands separator of the system's locale (`5'478.45` in Switzerland).
+    gridcraft_ui_egui::number_locale::apply(None);
     // ...and its light or dark appearance (#239), until a theme is chosen and saved in ui.json.
     app.ui.system_theme = true;
     let Some(dir) = config_dir() else { return };
