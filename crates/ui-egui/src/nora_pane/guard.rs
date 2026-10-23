@@ -32,7 +32,7 @@ use std::collections::BTreeMap;
 
 use craft_nora::links;
 use gridcraft_engine::formula::{Expr, Reference, SheetSel};
-use gridcraft_engine::model::{CfRule, Hyperlink, Sheet, Workbook};
+use gridcraft_engine::model::{CfRule, CfValueKind, Hyperlink, Sheet, Workbook};
 
 /// The functions that reach outside the workbook when Excel computes them: a web service, a picture
 /// from an address, a program (real-time data, a function of a library).
@@ -149,13 +149,33 @@ fn read_sheet(sheet: &Sheet, found: &mut Vec<Reach>) {
                 }
             }
             CfRule::Expression { formula, .. } => read_text(formula, &place, found),
+            // A colour scale's, a data bar's or an icon set's threshold may be a formula.
+            CfRule::ColorScale { stops } => {
+                for (value, _) in stops {
+                    read_threshold(value, &place, found);
+                }
+            }
+            CfRule::DataBar { min, max, .. } => {
+                read_threshold(min, &place, found);
+                read_threshold(max, &place, found);
+            }
+            CfRule::IconSet { thresholds, .. } => {
+                for value in thresholds {
+                    read_threshold(value, &place, found);
+                }
+            }
             _ => {}
         }
     }
     for table in &sheet.tables {
         for column in &table.columns {
+            let place = format!("the column {} of the table {}", column.name, table.name);
             if let Some(formula) = &column.formula {
-                read_text(formula, &format!("the column {} of the table {}", column.name, table.name), found);
+                read_text(formula, &place, found);
+            }
+            // The totals row's label, or its custom formula: a label is read only when it reads as a formula.
+            if let Some(label) = &column.totals_label {
+                read_reference(label, &place, found);
             }
         }
     }
@@ -190,6 +210,13 @@ fn read_text(text: &str, place: &str, found: &mut Vec<Reach>) {
     }
     let expr = gridcraft_engine::formula::parse(body).ok();
     read_formula(expr.as_ref(), body, place, found);
+}
+
+/// A threshold of a conditional format, when it is a formula.
+fn read_threshold(value: &CfValueKind, place: &str, found: &mut Vec<Reach>) {
+    if let CfValueKind::Formula(text) = value {
+        read_text(text, place, found);
+    }
 }
 
 /// A range a chart or a pivot table reads (`Sheet1!$B$2:$B$9`), or a series' literal name (`Ventes [CHF]`): read as
@@ -425,6 +452,22 @@ mod tests {
         let found = added(&before, &wb);
         assert_eq!(found.len(), 1, "{found:?}");
         assert_eq!(found[0].place, "the conditional format of Sheet1!A1:A9");
+        // A data bar's threshold is a formula too.
+        let mut sheet = (*wb.sheets[0]).clone();
+        sheet.cond_formats.push(gridcraft_engine::model::CondFormat {
+            ranges: vec![range],
+            rule: CfRule::DataBar {
+                min: CfValueKind::Min,
+                max: CfValueKind::Formula("RTD(\"server\",,\"x\")".into()),
+                color: gridcraft_engine::model::Color::default(),
+                gradient: true,
+                show_value: true,
+            },
+            priority: 2,
+            stop_if_true: false,
+        });
+        wb.sheets[0] = std::sync::Arc::new(sheet);
+        assert_eq!(added(&before, &wb).len(), 2);
     }
 
     #[test]
