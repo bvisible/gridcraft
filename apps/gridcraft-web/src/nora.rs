@@ -157,6 +157,12 @@ mod wire {
 
     /// The host's own way to Nora, when it offers one: the window that offers it, and the function.
     fn host_call() -> Option<(JsValue, js_sys::Function)> {
+        host_function("gridcraftNoraCall")
+    }
+
+    /// A function the page, or the page of the same origin that frames it, offers the workbook under `name`: the window
+    /// that offers it, and the function.
+    fn host_function(name: &str) -> Option<(JsValue, js_sys::Function)> {
         let window = web_sys::window()?;
         let own = JsValue::from(window.clone());
         let mut windows = vec![own.clone()];
@@ -167,7 +173,7 @@ mod wire {
                 windows.push(parent);
             }
         }
-        windows.into_iter().find_map(|w| get(&w, "gridcraftNoraCall").filter(JsValue::is_function).map(|f| (w, js_sys::Function::from(f))))
+        windows.into_iter().find_map(|w| get(&w, name).filter(JsValue::is_function).map(|f| (w, js_sys::Function::from(f))))
     }
 
     /// One call made by the host: its answer read as a `fetch`'s (status 0 when it gave none).
@@ -183,6 +189,15 @@ mod wire {
     /// Gives the app the means to reach Nora: each call is a `fetch`, each answer is delivered to the pane
     /// and wakes the interface.
     pub fn connect(services: &mut Services, origin: String, ctx: egui::Context) {
+        // //// Neoffice — the page that knows the instance opens its pages for the pane (`gridcraftNoraOpen(path)`: the
+        // Drive opens them in a new tab, on the person's click); without it the pane shows a link as its words.
+        if let Some((owner, open)) = host_function("gridcraftNoraOpen") {
+            services.nora_open = Some(Box::new(move |path: &str| {
+                if let Err(error) = open.call1(&owner, &JsValue::from_str(path)) {
+                    log::warn!("the page did not open {path}: {error:?}");
+                }
+            }));
+        }
         let inbox: NoraInbox = Arc::new(Mutex::new(Vec::new()));
         services.nora_inbox = Some(inbox.clone());
         services.nora_http = Some(Box::new(move |request: HttpRequest| {

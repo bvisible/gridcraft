@@ -251,6 +251,7 @@ fn show(app: &mut SheetApp, ui: &mut Ui) {
     app.nora.panel = std::mem::take(&mut app.nora.panel).with_error_words(error_worder(language));
     app.nora.panel.style = style(ui);
     app.nora.panel.offline = app.services.nora_http.is_none().then(|| language.tr("Nora isn't available in this version yet").to_string());
+    app.nora.panel.open_links = app.services.nora_open.is_some();
     for action in app.nora.panel.show(ui, &app.nora.session) {
         match &action {
             // Where the person is, as of the message: told to Nora with it, never read on every frame.
@@ -261,7 +262,7 @@ fn show(app: &mut SheetApp, ui: &mut Ui) {
             // A new conversation forgets what the last one changed, as the session does.
             PanelAction::NewConversation => app.nora.changes.clear(),
             // A Stop ends Nora's turn in the conversation; what the workbook already ran stays hers to undo.
-            PanelAction::Confirm { .. } | PanelAction::Undo | PanelAction::Stop => {}
+            PanelAction::Confirm { .. } | PanelAction::Undo | PanelAction::Stop | PanelAction::OpenLink(_) | PanelAction::AnswerCard { .. } => {}
         }
         outputs.extend(app.nora.session.handle(action.into_input()));
     }
@@ -293,6 +294,12 @@ fn perform(app: &mut SheetApp, outputs: Vec<Output>, ctx: &egui::Context) {
                     next.extend(app.nora.session.handle(Input::DocumentResult { id: call.id, result }));
                 }
                 Output::Changed => ctx.request_repaint(),
+                // A page of the instance (a card's Open), by the host.
+                Output::Open(path) => {
+                    if let Some(open) = &app.services.nora_open {
+                        open(&path);
+                    }
+                }
             }
         }
         queue = next;
@@ -403,6 +410,10 @@ fn revision(app: &SheetApp, uid: u64) -> Option<u64> {
     app.session.documents().iter().find(|d| d.uid == uid).map(|d| d.revision)
 }
 
+/// What Nora is told when she asks this pane to print or for the workbook's PDF: the words the server reads as an editor
+/// that does not do it (it then tells the person to use File, Print or Export).
+const NOT_HERE_YET: &str = "this is not available in the editor yet: NeoGrille prints with File, Print and exports with File, Export";
+
 fn apply(app: &mut SheetApp, kind: &DocActionKind, steps: &mut Vec<Weak<Workbook>>) -> Result<Json, String> {
     match kind {
         DocActionKind::Observe => observe(app),
@@ -413,6 +424,8 @@ fn apply(app: &mut SheetApp, kind: &DocActionKind, steps: &mut Vec<Weak<Workbook
         DocActionKind::RenderPage { .. } => Err(NO_RENDER.to_string()),
         DocActionKind::Save => save(app),
         DocActionKind::Undo => undo(app),
+        // Printing and the PDF for an e-mail are NeoDoc's for now (its letters): the server says what to do instead.
+        DocActionKind::Print | DocActionKind::ExportPdf => Err(NOT_HERE_YET.to_string()),
     }
 }
 
@@ -906,6 +919,7 @@ fn labels(language: Language) -> NoraLabels {
         confirm_heading: tr("Nora wants to:"),
         allow: tr("Allow"),
         refuse: tr("Refuse"),
+        open: tr("Open"),
         describe: describer(language),
     }
 }
@@ -971,6 +985,7 @@ fn describe(language: Language, kind: &DocActionKind) -> String {
         DocActionKind::RenderPage { page, .. } => language.tr("Look at page {page}").replace("{page}", &page.to_string()),
         DocActionKind::Save => language.tr("Save the workbook").to_string(),
         DocActionKind::Undo => language.tr("Undo the last change").to_string(),
+        DocActionKind::Print | DocActionKind::ExportPdf => kind.summary(),
     }
 }
 
