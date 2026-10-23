@@ -56,11 +56,12 @@ const MAX_AWAITING: usize = 32;
 /// Which workbook is which file of the page: the page names its file with `gridcraft:open` (`id`), and
 /// Nora's pane tells Nora that id with each message about the workbook (`nora_pane::name_file`). The id
 /// waits for its workbook: the file opens in the frame after the message, or once the person has typed
-/// its password.
+/// its password. The workbook is known by its title, the file's name (`file.open`): a workbook made
+/// meanwhile, or the page's file that could not be opened, never takes the id.
 #[derive(Default)]
 struct Naming {
-    /// The id sent with the page's last file (`Some(None)`: the page named none) while that file is not open.
-    pending: Option<Option<String>>,
+    /// The page's last file (its name, and its id or `None` when the page named none) while it is not open.
+    pending: Option<(String, Option<String>)>,
     /// The workbooks open after the last frame.
     known: Vec<u64>,
 }
@@ -71,21 +72,30 @@ impl Naming {
         self.known = uids(app);
     }
 
-    /// After a frame: `sent` are the ids the page sent with its files since the last one (its last file is
-    /// the one that counts). The first workbook that was not open before is the page's file.
-    fn settle(&mut self, app: &mut SheetApp, sent: Vec<Option<String>>) {
+    /// After a frame: `sent` are the files the page sent since the last one, (name, id) (its last file is
+    /// the one that counts). A workbook that was not open before and bears that file's name is the page's file.
+    fn settle(&mut self, app: &mut SheetApp, sent: Vec<(String, Option<String>)>) {
         if let Some(last) = sent.into_iter().last() {
             self.pending = Some(last);
         }
         let now = uids(app);
-        if self.pending.is_some()
-            && let Some(&uid) = now.iter().rev().find(|uid| !self.known.contains(uid))
-        {
-            let id = self.pending.take().flatten();
+        let opened = self.pending.as_ref().and_then(|(name, _)| {
+            app.session.documents().iter().rev().find(|doc| !self.known.contains(&doc.uid) && is_the_file(&doc.title, name)).map(|doc| doc.uid)
+        });
+        if let Some(uid) = opened {
+            let id = self.pending.take().and_then(|(_, id)| id);
             gridcraft_ui_egui::nora_pane::name_file(app, uid, id.as_deref());
         }
         self.known = now;
     }
+}
+
+/// Whether a workbook titled `title` is the file `name` opened: `file.open` titles it with the file's name,
+/// and an imported one (`.ods`, `.xls`, `.xlsb`) `<stem> (imported).xlsx`.
+fn is_the_file(title: &str, name: &str) -> bool {
+    let file = file_name(name);
+    let stem = std::path::Path::new(&file).file_stem().and_then(|stem| stem.to_str()).unwrap_or("Book");
+    title == file || title == format!("{stem} (imported).xlsx")
 }
 
 fn uids(app: &SheetApp) -> Vec<u64> {
@@ -257,8 +267,8 @@ mod wire {
         handed: Vec<String>,
         /// What the parent answered (`gridcraft:saved`), and files that could not be handed over.
         answers: Vec<Answer>,
-        /// The page's name for each file it sent (`gridcraft:open`'s `id`), oldest first.
-        ids: Vec<Option<String>>,
+        /// Each file the page sent: its name and the page's id for it (`gridcraft:open`'s `id`), oldest first.
+        ids: Vec<(String, Option<String>)>,
     }
 
     #[derive(Clone)]
@@ -371,8 +381,8 @@ mod wire {
                     Some("gridcraft:open") => {
                         let name = string(&data, "name").filter(|n| !n.trim().is_empty()).unwrap_or_else(|| "Book.xlsx".to_string());
                         let Some(bytes) = bytes(&data) else { return };
+                        mail.borrow_mut().ids.push((name.clone(), string(&data, "id")));
                         inbox.lock().unwrap_or_else(|e| e.into_inner()).push((name, bytes));
-                        mail.borrow_mut().ids.push(string(&data, "id"));
                     }
                     Some("gridcraft:saved") => {
                         let Some(name) = string(&data, "name").filter(|n| !n.trim().is_empty()) else {
@@ -737,7 +747,8 @@ mod tests {
     }
 
     /// The page's name for its file goes to the workbook that opens for it, in the frame after the message or
-    /// later (a password), never to a workbook that was open before; a page that names none names none.
+    /// later (a password), never to a workbook that was open before nor to one made meanwhile, and not when the
+    /// file did not open; a page that names none names none.
     #[test]
     fn the_file_the_page_names_is_the_workbook_that_opens_for_it() {
         use gridcraft_ui_egui::nora_pane::named_file;
@@ -745,29 +756,46 @@ mod tests {
         let blank = app.session.active().map(|d| d.uid).unwrap();
         let mut naming = Naming::default();
         naming.start(&app);
-        naming.settle(&mut app, vec![Some("3fcaa7893c".into())]);
+        naming.settle(&mut app, vec![("Ventes.xlsx".into(), Some("3fcaa7893c".into()))]);
         assert_eq!(named_file(&app, blank), None, "the workbook that was there is not the page's file");
+        // The person makes a workbook while the page's file waits for its password: not the page's file.
         app.session.new_workbook();
-        let opened = app.session.active().map(|d| d.uid).unwrap();
+        let made = app.session.active().map(|d| d.uid).unwrap();
+        naming.settle(&mut app, Vec::new());
+        assert_eq!(named_file(&app, made), None);
+        let opened = open(&mut app, "Ventes.xlsx");
         naming.settle(&mut app, Vec::new());
         assert_eq!(named_file(&app, opened), Some("3fcaa7893c"), "the file opened a frame later");
-        assert_eq!(named_file(&app, blank), None);
-        // Another workbook made afterwards is no file of the page's.
-        app.session.new_workbook();
-        let other = app.session.active().map(|d| d.uid).unwrap();
+        // A file the page sends with no name for it, or a name that is no id.
+        naming.settle(&mut app, vec![("Autre.xlsx".into(), None)]);
+        let other = open(&mut app, "Autre.xlsx");
         naming.settle(&mut app, Vec::new());
         assert_eq!(named_file(&app, other), None);
-        // A page that sends a file without a name, or a name that is none.
-        naming.settle(&mut app, vec![None]);
-        app.session.new_workbook();
-        let unnamed = app.session.active().map(|d| d.uid).unwrap();
+        naming.settle(&mut app, vec![("Tableau.ods".into(), Some("../../etc".into()))]);
+        let imported = open(&mut app, "Tableau (imported).xlsx");
         naming.settle(&mut app, Vec::new());
-        assert_eq!(named_file(&app, unnamed), None);
-        naming.settle(&mut app, vec![Some("x".into()), Some("../../etc".into())]);
-        app.session.new_workbook();
-        let last = app.session.active().map(|d| d.uid).unwrap();
+        assert_eq!(named_file(&app, imported), None, "that is no id");
+        naming.settle(&mut app, vec![("Tableau.ods".into(), Some("a1b2c3".into()))]);
+        let again = open(&mut app, "Tableau (imported).xlsx");
         naming.settle(&mut app, Vec::new());
-        assert_eq!(named_file(&app, last), None, "the page's last file counts, and that is no id");
+        assert_eq!(named_file(&app, again), Some("a1b2c3"), "an imported file is known by its title");
         assert_eq!(named_file(&app, opened), Some("3fcaa7893c"), "the first one keeps its name");
+    }
+
+    /// A workbook as `file.open` leaves it: titled `title`.
+    fn open(app: &mut SheetApp, title: &str) -> u64 {
+        app.session.new_workbook();
+        let doc = app.session.active_mut().unwrap();
+        doc.title = title.to_string();
+        doc.uid
+    }
+
+    #[test]
+    fn a_workbook_is_the_file_by_its_title() {
+        assert!(is_the_file("Ventes.xlsx", "Ventes.xlsx"));
+        assert!(is_the_file("Ventes.xlsx", "/dossier/Ventes.xlsx"));
+        assert!(is_the_file("Ventes (imported).xlsx", "Ventes.ods"));
+        assert!(!is_the_file("Book2", "Ventes.xlsx"));
+        assert!(!is_the_file("Ventes.xlsx", "Autre.xlsx"));
     }
 }

