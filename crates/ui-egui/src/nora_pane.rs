@@ -1012,6 +1012,14 @@ fn describer(language: Language) -> fn(&DocActionKind) -> String {
         Language::Cs => |kind: &DocActionKind| describe(Language::Cs, kind),
         Language::Fr => |kind: &DocActionKind| describe(Language::Fr, kind),
         Language::Sr => |kind: &DocActionKind| describe(Language::Sr, kind),
+        Language::El => |kind: &DocActionKind| describe(Language::El, kind),
+        Language::Tr => |kind: &DocActionKind| describe(Language::Tr, kind),
+        Language::Pl => |kind: &DocActionKind| describe(Language::Pl, kind),
+        Language::It => |kind: &DocActionKind| describe(Language::It, kind),
+        Language::Uk => |kind: &DocActionKind| describe(Language::Uk, kind),
+        Language::Vi => |kind: &DocActionKind| describe(Language::Vi, kind),
+        Language::Nl => |kind: &DocActionKind| describe(Language::Nl, kind),
+        Language::Ro => |kind: &DocActionKind| describe(Language::Ro, kind),
     }
 }
 
@@ -1029,6 +1037,14 @@ fn error_worder(language: Language) -> fn(&NoraError) -> String {
         Language::Cs => |failure: &NoraError| error_words(Language::Cs, failure),
         Language::Fr => |failure: &NoraError| error_words(Language::Fr, failure),
         Language::Sr => |failure: &NoraError| error_words(Language::Sr, failure),
+        Language::El => |failure: &NoraError| error_words(Language::El, failure),
+        Language::Tr => |failure: &NoraError| error_words(Language::Tr, failure),
+        Language::Pl => |failure: &NoraError| error_words(Language::Pl, failure),
+        Language::It => |failure: &NoraError| error_words(Language::It, failure),
+        Language::Uk => |failure: &NoraError| error_words(Language::Uk, failure),
+        Language::Vi => |failure: &NoraError| error_words(Language::Vi, failure),
+        Language::Nl => |failure: &NoraError| error_words(Language::Nl, failure),
+        Language::Ro => |failure: &NoraError| error_words(Language::Ro, failure),
     }
 }
 

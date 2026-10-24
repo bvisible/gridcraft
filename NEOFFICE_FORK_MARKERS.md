@@ -10,8 +10,9 @@ At the next upstream merge, `grep -rn "////"` in the source plus this file give 
 picture of what is ours and why.
 
 - **Upstream**: `storytold/gridcraft`, branch `main`.
-- **Base of the divergence**: `2ebdf164c2c9c536122e0a2cffe79078b5c818ac`, the tag `v0.10.0`, merged on 2026-10-22
-  (`version-15` was cut on `fc45b7f`, the tag `v0.6.1`, on 2026-10-13). Move it at each upstream merge. The check works it out itself (the common ancestor with
+- **Base of the divergence**: `ac8da7d49cbeb4be6aa1ad5869f3d29fe2da8cd9`, the tag `v0.11.1`, merged on 2026-10-24
+  (before: `2ebdf16`, the tag `v0.10.0`, merged on 2026-10-22; `version-15` was cut on `fc45b7f`, the tag `v0.6.1`, on
+  2026-10-13). Move it at each upstream merge. The check works it out itself (the common ancestor with
   upstream's `main`), so this line is for the reader.
 
 ## What the fork adds
@@ -42,7 +43,11 @@ carry their own `//// Neoffice — added file` header.
   as saved and what a refusal does is plain Rust, tested off wasm (`host.rs` is built for `cfg(test)` too).
   Upstream added its own `host.rs` in v0.7.0 (#237), a subset of ours (same messages and `?author=`). At the
   v0.10.0 merge ours replaced it whole (its header says so) and upstream's `query_param` left `web.rs` (a marked
-  line: ours is in `host.rs`). At a later merge, read upstream's changes to its file
+  line: ours is in `host.rs`). Since v0.11 upstream keeps the browser build's preferences in `localStorage`
+  (`apps/gridcraft-web/src/prefs.rs`): under a hosting page they are restored first, then the page's choices apply
+  (marked lines in `web.rs`): the name stored on an earlier visit does not sign (perhaps someone else's on a shared
+  browser) and `?author=` is never stored over it (upstream's `keep_user_name`), the page's file names are kept out of
+  the stored Recent list, and the Nora pane is open exactly when the page offers Nora. At a later merge, read upstream's changes to its file
   (`git diff <old base> <new tag> -- apps/gridcraft-web/src/host.rs`) and carry them over by hand; in `web.rs`,
   `main.rs` and `Cargo.toml` keep our calls (`Bridge::requested`, `connect`, `ready`, `sync(app, ctx)`).
 - **The French line of the bridge's message** ("Couldn't save {name}: {error}"): new file
@@ -131,7 +136,8 @@ carry their own `//// Neoffice — added file` header.
   are translated in `crates/ui-egui/src/i18n/neoffice.rs`, every language (French included, since the v0.10.0 merge
   asked like the others, and Serbian, which v0.7.0 added), which `Language::tr` asks after each catalog (one marked
   line in `crates/ui-egui/src/i18n.rs`). `neoffice.rs`'s `table` and the pane's `describer` and `error_worder` match
-  every `Language`: a language upstream adds does not compile until it has its table (Haiku translates it).
+  every `Language`: a language upstream adds does not compile until it has its table (Haiku translates it; v0.11 added
+  Greek, Turkish, Polish, Italian, Ukrainian, Vietnamese, Dutch and Romanian).
   The browser build connects the pane with WordCraft's transport (new file `apps/gridcraft-web/src/nora.rs`, its
   decisions plain Rust tested off wasm as `host.rs`'s, the browser part in its module `wire`; marked changes in
   `apps/gridcraft-web/src/web.rs`, `apps/gridcraft-web/src/main.rs` and the web-sys features of

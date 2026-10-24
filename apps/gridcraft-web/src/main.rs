@@ -11,7 +11,8 @@
 //! URL query flags: `?webgl` forces WebGL2; `?sample=sales|budget|grades` opens a sample;
 //! `?host=parent` (inside an `<iframe>`) talks to a same-origin parent page instead: it sends the
 //! workbook to open and stores what GridCraft saves (`host`), and `&author=` names the user for
-//! notes and comments.
+//! notes and comments. Preferences (theme, interface size, editing options…) are kept in
+//! `localStorage` (`prefs`).
 // //// Neoffice — the Nora pane's flags, documented for the next reader; the connection is in nora.rs.
 //!
 //! `?nora` opens the Nora pane, connected with the page's own session at the page's own origin
@@ -31,6 +32,8 @@ mod host;
 mod flags;
 #[cfg(any(target_arch = "wasm32", test))]
 mod nora;
+#[cfg(any(target_arch = "wasm32", test))]
+mod prefs;
 #[cfg(target_arch = "wasm32")]
 mod web;
 
