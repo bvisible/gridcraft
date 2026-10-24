@@ -22,7 +22,9 @@ carry their own `//// Neoffice — added file` header.
 
 - `.github/workflows/neoffice-web.yml`: builds the browser version on a GitHub runner, started by
   hand, with the packaging script upstream's own release job runs. Upstream's workflows are
-  disabled on this fork, because they need upstream's signing secrets.
+  disabled on this fork, because they need upstream's signing secrets (each new one is disabled through the API right
+  after the merge that brings it: `nix.yml` with v0.10.0, `sonarcloud.yml`, which hands the secrets to a mutable
+  upstream ref, with v0.11.1).
 - `.github/workflows/neoffice-markers.yml`: fails a push to `version-15` when a change to
   upstream's code since the common ancestor carries no marker.
 - `.github/workflows/neoffice-ci.yml`: runs upstream's own quality gate, `cargo xtask ci`, on a
@@ -91,6 +93,9 @@ carry their own `//// Neoffice — added file` header.
     (`open_dialog`'s `saveAs`, the field `host_encrypted_original`; `save` in `nora_pane.rs`), a message bar says why
     (one string, translated in `i18n/neoffice.rs` by Haiku), and the workbook stays marked as changed. Exports (PDF,
     CSV, web page) still go to the page: they are other files and replace nothing.
+  - **AutoSave** (a preference upstream keeps since v0.11, `UiState::autosave`) never saves under a hosting page (one
+    marked condition in `lib.rs`): its direct `file.save` would skip the guards of File › Save; the page's workbooks
+    have no file path, so it never fired there anyway.
   - **Data › Get Data** (and `data.getData` or `data.fromTextCsv` without a file, which ask for one): the browser's picker
     for a text, CSV or JSON file (`apps/gridcraft-web/src/host.rs`, a picker of its own whose file never reaches the inbox
     of the page's files) and the file imported into the page's workbook, in a new sheet named after it, as Excel's Get
@@ -137,7 +142,9 @@ carry their own `//// Neoffice — added file` header.
   asked like the others, and Serbian, which v0.7.0 added), which `Language::tr` asks after each catalog (one marked
   line in `crates/ui-egui/src/i18n.rs`). `neoffice.rs`'s `table` and the pane's `describer` and `error_worder` match
   every `Language`: a language upstream adds does not compile until it has its table (Haiku translates it; v0.11 added
-  Greek, Turkish, Polish, Italian, Ukrainian, Vietnamese, Dutch and Romanian).
+  Greek, Turkish, Polish, Italian, Ukrainian, Vietnamese, Dutch and Romanian). Three of the pane's buttons are asked
+  as `Nora|Allow`, `Nora|Undo` and `Nora|Stop`: upstream's catalogs translate the bare words for other places (Japanese
+  `Allow` is data validation's "type of input value") and a catalog wins over our tables; the context never shows.
   The browser build connects the pane with WordCraft's transport (new file `apps/gridcraft-web/src/nora.rs`, its
   decisions plain Rust tested off wasm as `host.rs`'s, the browser part in its module `wire`; marked changes in
   `apps/gridcraft-web/src/web.rs`, `apps/gridcraft-web/src/main.rs` and the web-sys features of
@@ -159,9 +166,9 @@ carry their own `//// Neoffice — added file` header.
   name otherwise, so upstream's builds and every test run are unchanged. `Language::tr` passes its result through
   `brand::rebrand`, which swaps the whole word `GridCraft` in every language (the Help tab's About button, its
   tooltips) without touching the tables; the message box shows its default title `GridCraft` through
-  `brand::alert_title` (`widgets.rs`, one line for the fourteen alerts); the About and Start dialogs, the Agent Control
+  `brand::alert_title` (`widgets.rs`, one line for the fourteen alerts); the About and Start dialogs, File › Account, the Agent Control
   and Macros texts, the VBA notice and the page that failed to start call `brand::name()` (marked lines in `lib.rs`,
-  `i18n.rs`, `widgets.rs`, `dialogs.rs` and `apps/gridcraft-web/src/web.rs`). The page title and the loading text are
+  `i18n.rs`, `widgets.rs`, `dialogs.rs`, `backstage.rs` and `apps/gridcraft-web/src/web.rs`). The page title and the loading text are
   ours in `apps/gridcraft-web/index.html`. Stored or compared names (storage folders, `GridCraft User`, `gridcraft:*`
   messages, `ai.storyteller.*`) and the native app (window title, macOS menu) keep upstream's.
 

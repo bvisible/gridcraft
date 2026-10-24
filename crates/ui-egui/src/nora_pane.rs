@@ -979,19 +979,20 @@ fn style(ui: &Ui) -> NoraStyle {
 /// panel's is left empty.
 fn labels(language: Language) -> NoraLabels {
     let tr = |text: &'static str| language.tr(text).to_string();
+    // `Nora|…`: the button's own word, not the catalog's for the same English elsewhere (`i18n/neoffice.rs`).
     NoraLabels {
         title: String::new(),
         new_conversation: tr("New conversation"),
-        undo: tr("Undo"),
+        undo: tr("Nora|Undo"),
         undo_hint: tr("Undo the last change Nora made to the workbook"),
         placeholder: tr("Ask Nora…"),
         send: tr("Send"),
-        stop: tr("Stop"),
+        stop: tr("Nora|Stop"),
         working: tr("Nora is working…"),
         stopped: tr("Stopped."),
         empty: tr("Ask Nora to fill in, calculate, sort or format your workbook."),
         confirm_heading: tr("Nora wants to:"),
-        allow: tr("Allow"),
+        allow: tr("Nora|Allow"),
         refuse: tr("Refuse"),
         open: tr("Open"),
         describe: describer(language),

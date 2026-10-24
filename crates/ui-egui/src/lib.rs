@@ -1441,7 +1441,10 @@ impl SheetApp {
         }
         self.perf.last = now;
         // AutoSave: save workbooks that have a file shortly after they change.
+        // //// Neoffice — never when a hosting page opens the workbooks: its saves reach the page through File › Save, whose
+        // guards (the page's password-protected workbook never handed back in clear) this direct `file.save` would skip.
         if self.ui.autosave
+            && !self.services.host_owns_documents
             && self.editor.is_none()
             && self.text_box_editor.is_none()
             && now - self.grid.last_autosave > 2000.0

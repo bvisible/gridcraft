@@ -1046,7 +1046,8 @@ fn account(app: &mut SheetApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     let lang = app.ui.language;
     section(ui, lang, "Product Information");
-    ui.label(RichText::new("GridCraft").font(theme::ui_bold(16.0)).color(t.text));
+    // //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise.
+    ui.label(RichText::new(crate::brand::name()).font(theme::ui_bold(16.0)).color(t.text));
     ui.add_space(8.0);
     egui::Grid::new("backstage_account").num_columns(2).spacing(vec2(18.0, 8.0)).show(ui, |ui| {
         for (label, value) in
