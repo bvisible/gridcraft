@@ -192,6 +192,9 @@ carry their own `//// Neoffice — added file` header.
   Average, the macro and circular-reference notices and the zoom buttons' tooltips in English. They are asked from `Language::tr`,
   with Neoffice's translations in French, German, Italian and Spanish (Haiku; every other language shows upstream's English, and a
   language's own catalog still wins), and the view buttons' tooltips use the ribbon's labels, which the catalogs translate.
+  Sum and Average are shown in the number format of the selection's first numeric cell, as Excel shows them (upstream:
+  the active cell's, so CHF amounts selected from a General cell or a label read `927.4083333333`); a General one keeps
+  upstream's display (`first_numeric` in `tabs.rs`, marked).
 
 ## Files that cannot carry a comment
 

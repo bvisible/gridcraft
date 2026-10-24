@@ -349,8 +349,13 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                         && !d.selection.is_single_cell()
                     {
                         let st = gridcraft_engine::display::stats(sh, &d.selection.ranges);
+                        // //// Neoffice — Sum and Average in the number format of the selection's first numeric cell, as Excel shows
+                        // them (upstream: the active cell's, so CHF amounts selected from a General cell read `927.4083333333`); a
+                        // General one keeps upstream's display.
+                        let shown_like = first_numeric(sh, &d.selection.ranges).unwrap_or(d.selection.active);
                         let fmt = |v: f64| {
-                            let code = d.wb.styles.get(sh.style_id(d.selection.active)).num_fmt.as_str().to_string();
+                            // //// Neoffice — `shown_like` (above), not the active cell.
+                            let code = d.wb.styles.get(sh.style_id(shown_like)).num_fmt.as_str().to_string();
                             let code = if code == "General" { "#,##0.##########".to_string() } else { code };
                             gridcraft_engine::display::format(&gridcraft_engine::core::Value::Number(v), &code, &d.wb)
                                 .text
@@ -380,6 +385,20 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
             });
         },
     );
+}
+
+// //// Neoffice — added: the first cell of the selection that holds a number, in reading order (the ranges in the order they
+// were selected), hidden rows skipped as `display::stats` skips them; its number format is the one the status bar's Sum and
+// Average are shown in.
+fn first_numeric(sheet: &Sheet, ranges: &[gridcraft_engine::core::RangeRef]) -> Option<gridcraft_engine::core::CellRef> {
+    let used = sheet.used_range()?;
+    ranges.iter().filter_map(|r| r.intersection(&used)).find_map(|r| {
+        sheet
+            .cells
+            .iter_range(r)
+            .find(|(at, cell)| matches!(cell.value, gridcraft_engine::core::Value::Number(_)) && !sheet.is_row_hidden(at.row))
+            .map(|(at, _)| at)
+    })
 }
 
 #[cfg(test)]
