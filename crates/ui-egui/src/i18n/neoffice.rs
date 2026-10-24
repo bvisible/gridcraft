@@ -60,6 +60,14 @@ const FRENCH: &[(&str, &str)] = &[
         "L'onglet était en arrière-plan : Nora n'a pas pu agir dans le classeur.",
     ),
     ("Nora|Resume", "Reprendre"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Rien n'a été fait dans le classeur : Nora n'a pas pu y agir à temps. Demandez à nouveau si vous en avez encore besoin.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Tout n'a pas été fait : une partie n'a pas pu être exécutée dans le classeur à temps.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nora n'a pas pu être jointe. Vérifiez la connexion et réessayez."),
     ("Your session has expired. Sign in again.", "Votre session a expiré. Reconnectez-vous."),
     (
@@ -116,6 +124,14 @@ const GERMAN: &[(&str, &str)] = &[
     ),
     ("Nora|Resume", "Fortsetzen"),
     (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Nichts wurde in der Arbeitsmappe getan: Nora konnte nicht rechtzeitig darin handeln. Fragen Sie erneut, falls Sie es noch benötigen.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Nicht alles wurde ausgeführt: Ein Teil konnte in der Arbeitsmappe nicht rechtzeitig ausgeführt werden.",
+    ),
+    (
         "Nora could not be reached. Check the connection and try again.",
         "Nora war nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     ),
@@ -170,6 +186,14 @@ const SPANISH: &[(&str, &str)] = &[
         "Esta pestaña estaba en segundo plano: Nora no pudo actuar en el libro de cálculo.",
     ),
     ("Nora|Resume", "Reintentar"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "No se hizo nada en el libro de cálculo: Nora no pudo actuar en él a tiempo. Vuelva a pedirlo si todavía lo necesita.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "No se completó todo: una parte no pudo ejecutarse a tiempo en el libro de cálculo.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "No se pudo contactar con Nora. Compruebe la conexión y vuelva a intentarlo."),
     ("Your session has expired. Sign in again.", "Su sesión ha caducado. Inicie sesión de nuevo."),
     (
@@ -222,6 +246,14 @@ const PORTUGUESE: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "A Nora não respondeu a tempo."),
     ("This tab was in the background: Nora could not act in the workbook.", "Esta aba estava em segundo plano: a Nora não pôde agir na planilha."),
     ("Nora|Resume", "Retomar"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Nada foi feito na planilha: a Nora não pôde agir nela a tempo. Peça novamente se ainda precisar.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Nem tudo foi feito: parte não pôde ser executada na planilha a tempo.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Não foi possível conectar à Nora. Verifique a conexão e tente novamente."),
     ("Your session has expired. Sign in again.", "Sua sessão expirou. Entre novamente."),
     (
@@ -277,6 +309,14 @@ const RUSSIAN: &[(&str, &str)] = &[
         "Эта вкладка была в фоновом режиме: Nora не могла выполнить действие в книге.",
     ),
     ("Nora|Resume", "Повторить"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "В книге ничего не было сделано: Nora не смогла выполнить действие в ней вовремя. Повторите запрос, если он вам ещё нужен.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Сделано не всё: часть действий не удалось выполнить в книге вовремя.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Не удалось связаться с Nora. Проверьте подключение и повторите попытку."),
     ("Your session has expired. Sign in again.", "Ваш сеанс истёк. Войдите снова."),
     (
@@ -326,6 +366,14 @@ const CZECH: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora neodpověděla včas."),
     ("This tab was in the background: Nora could not act in the workbook.", "Tato karta byla na pozadí: Nora nemohla v sešitu provést akci."),
     ("Nora|Resume", "Pokračovat"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "V sešitu nebylo nic provedeno: Nora v něm nestihla jednat včas. Zadejte to znovu, pokud to ještě potřebujete.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Nebylo provedeno všechno: část se v sešitu nepodařilo včas spustit.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nora není dostupná. Zkontrolujte připojení a zkuste to znovu."),
     ("Your session has expired. Sign in again.", "Vaše relace vypršela. Přihlaste se znovu."),
     ("The server could not answer (error {status}). Try again in a moment.", "Server nemohl odpovědět (chyba {status}). Zkuste to za chvíli znovu."),
@@ -375,6 +423,14 @@ const JAPANESE: &[(&str, &str)] = &[
         "このタブはバックグラウンドにあったため、Nora はブック内で操作できませんでした。",
     ),
     ("Nora|Resume", "再開"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "ブック内では何も実行されませんでした：Nora は時間内にブック内で操作できませんでした。まだ必要であれば、もう一度依頼してください。",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "すべてが実行されたわけではありません：一部はブック内で時間内に実行できませんでした。",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nora に接続できませんでした。接続を確認して、もう一度お試しください。"),
     ("Your session has expired. Sign in again.", "セッションの有効期限が切れました。もう一度サインインしてください。"),
     (
@@ -421,6 +477,11 @@ const CHINESE: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora 未能及时回复。"),
     ("This tab was in the background: Nora could not act in the workbook.", "该标签页处于后台：Nora 无法在工作簿中执行操作。"),
     ("Nora|Resume", "恢复"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "工作簿中没有做任何更改：Nora 未能及时在其中执行操作。如果仍需要，请再次提出请求。",
+    ),
+    ("Not all of this was done: part of it could not run in the workbook in time.", "并非全部都已完成：其中一部分未能及时在工作簿中运行。"),
     ("Nora could not be reached. Check the connection and try again.", "无法连接到 Nora。请检查网络连接后重试。"),
     ("Your session has expired. Sign in again.", "您的会话已过期，请重新登录。"),
     ("The server could not answer (error {status}). Try again in a moment.", "服务器无法响应（错误 {status}）。请稍后重试。"),
@@ -467,6 +528,14 @@ const KOREAN: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora가 제시간에 응답하지 않았습니다."),
     ("This tab was in the background: Nora could not act in the workbook.", "이 탭이 백그라운드에 있어서 Nora가 통합 문서에서 작업할 수 없었습니다."),
     ("Nora|Resume", "다시 시작"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "통합 문서에서 아무 작업도 처리되지 않았습니다: Nora가 제때 통합 문서에서 작업할 수 없었습니다. 여전히 필요하면 다시 요청해 주세요.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "모든 작업이 완료된 것은 아닙니다: 일부 작업을 제때 통합 문서에서 실행할 수 없었습니다.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nora에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도해 주세요."),
     ("Your session has expired. Sign in again.", "세션이 만료되었습니다. 다시 로그인해 주세요."),
     (
@@ -516,6 +585,14 @@ const SERBIAN: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora nije odgovorila na vreme."),
     ("This tab was in the background: Nora could not act in the workbook.", "Ovaj tab je bio u pozadini: Nora nije mogla da deluje u radnoj svesci."),
     ("Nora|Resume", "Nastavi"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Ništa nije urađeno u radnoj svesci: Nora nije na vreme mogla da deluje u njoj. Ponovo zatražite ako vam je još potrebno.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Nije sve urađeno: deo nije mogao da se izvrši u radnoj svesci na vreme.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nije moguće stupiti u vezu sa Norom. Proveri vezu i pokušaj ponovo."),
     ("Your session has expired. Sign in again.", "Sesija je istekla. Prijavi se ponovo."),
     (
@@ -572,6 +649,14 @@ const GREEK: &[(&str, &str)] = &[
     ),
     ("Nora|Resume", "Επανάληψη"),
     (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Δεν έγινε τίποτα στο βιβλίο εργασίας: η Nora δεν μπόρεσε να ενεργήσει σε αυτό εγκαίρως. Ζητήστε ξανά, αν το χρειάζεστε ακόμη.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Δεν ολοκληρώθηκαν όλα: ένα μέρος δεν μπόρεσε να εκτελεστεί στο βιβλίο εργασίας εγκαίρως.",
+    ),
+    (
         "Nora could not be reached. Check the connection and try again.",
         "Δεν ήταν δυνατή η σύνδεση με τη Nora. Ελέγξτε τη σύνδεση και δοκιμάστε ξανά.",
     ),
@@ -626,6 +711,14 @@ const TURKISH: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora zamanında yanıt vermedi."),
     ("This tab was in the background: Nora could not act in the workbook.", "Bu sekme arka plandaydı: Nora çalışma kitabında işlem yapamadı."),
     ("Nora|Resume", "Devam et"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Çalışma kitabında hiçbir şey yapılmadı: Nora zamanında çalışma kitabında işlem yapamadı. Hâlâ gerekiyorsa lütfen yeniden isteyin.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Bunların hepsi yapılmadı: bir kısmı zamanında çalışma kitabında çalıştırılamadı.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nora'ya ulaşılamadı. Bağlantıyı kontrol edip yeniden deneyin."),
     ("Your session has expired. Sign in again.", "Oturumunuzun süresi doldu. Yeniden oturum açın."),
     ("The server could not answer (error {status}). Try again in a moment.", "Sunucu yanıt veremedi (hata {status}). Birazdan yeniden deneyin."),
@@ -675,6 +768,14 @@ const POLISH: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora nie odpowiedziała na czas."),
     ("This tab was in the background: Nora could not act in the workbook.", "Ta karta była w tle: Nora nie mogła wykonać działania w skoroszycie."),
     ("Nora|Resume", "Wznów"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Nic nie zostało zrobione w skoroszycie: Nora nie zdążyła w nim zadziałać. Jeśli nadal jest to potrzebne, zleć to ponownie.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Nie wszystko zostało wykonane: część nie mogła zostać uruchomiona w skoroszycie na czas.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nie udało się połączyć z Norą. Sprawdź połączenie i spróbuj ponownie."),
     ("Your session has expired. Sign in again.", "Twoja sesja wygasła. Zaloguj się ponownie."),
     (
@@ -730,6 +831,14 @@ const ITALIAN: &[(&str, &str)] = &[
         "Questa scheda era in background: Nora non ha potuto agire nella cartella di lavoro.",
     ),
     ("Nora|Resume", "Riprendi"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Nella cartella di lavoro non è stato fatto nulla: Nora non ha potuto agire in tempo. Riprova se ne hai ancora bisogno.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Non tutto è stato fatto: una parte non ha potuto essere eseguita in tempo nella cartella di lavoro.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Impossibile raggiungere Nora. Controlla la connessione e riprova."),
     ("Your session has expired. Sign in again.", "La sessione è scaduta. Accedi di nuovo."),
     (
@@ -782,6 +891,11 @@ const UKRAINIAN: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora не відповіла вчасно."),
     ("This tab was in the background: Nora could not act in the workbook.", "Ця вкладка була у фоновому режимі: Nora не могла виконати дію в книзі."),
     ("Nora|Resume", "Повторити"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "У книзі нічого не було зроблено: Nora не встигла виконати дію в ній вчасно. Повторіть запит, якщо він ще потрібен.",
+    ),
+    ("Not all of this was done: part of it could not run in the workbook in time.", "Виконано не все: частину не вдалося запустити в книзі вчасно."),
     ("Nora could not be reached. Check the connection and try again.", "Не вдалося зв'язатися з Nora. Перевірте з'єднання та спробуйте ще раз."),
     ("Your session has expired. Sign in again.", "Ваш сеанс завершився. Увійдіть знову."),
     ("The server could not answer (error {status}). Try again in a moment.", "Сервер не зміг відповісти (помилка {status}). Спробуйте за хвилину."),
@@ -828,6 +942,14 @@ const VIETNAMESE: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora không trả lời kịp thời."),
     ("This tab was in the background: Nora could not act in the workbook.", "Thẻ này đang ở chế độ nền: Nora không thể thao tác trong sổ tính."),
     ("Nora|Resume", "Tiếp tục"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Chưa có gì được thực hiện trong sổ tính: Nora không kịp thao tác trong đó. Nếu vẫn cần, bạn hãy yêu cầu lại.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Không phải tất cả đã được thực hiện: một phần không thể chạy trong sổ tính kịp thời.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Không thể kết nối với Nora. Hãy kiểm tra kết nối và thử lại."),
     ("Your session has expired. Sign in again.", "Phiên của bạn đã hết hạn. Hãy đăng nhập lại."),
     ("The server could not answer (error {status}). Try again in a moment.", "Máy chủ không thể phản hồi (lỗi {status}). Hãy thử lại sau ít phút."),
@@ -880,6 +1002,14 @@ const DUTCH: &[(&str, &str)] = &[
         "Dit tabblad stond op de achtergrond: Nora kon niet handelen in de werkmap.",
     ),
     ("Nora|Resume", "Hervatten"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Er is niets gedaan in de werkmap: Nora kon er op tijd niet in handelen. Vraag het opnieuw als u het nog nodig heeft.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Niet alles is gedaan: een deel kon op tijd niet in de werkmap worden uitgevoerd.",
+    ),
     (
         "Nora could not be reached. Check the connection and try again.",
         "Nora kon niet worden bereikt. Controleer de verbinding en probeer het opnieuw.",
@@ -938,6 +1068,14 @@ const ROMANIAN: &[(&str, &str)] = &[
         "Această filă era în fundal: Nora nu a putut acționa în registrul de calcul.",
     ),
     ("Nora|Resume", "Reluare"),
+    (
+        "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
+        "Nu s-a făcut nimic în registrul de calcul: Nora nu a putut acționa în el la timp. Cereți din nou dacă mai aveți nevoie.",
+    ),
+    (
+        "Not all of this was done: part of it could not run in the workbook in time.",
+        "Nu s-a făcut totul: o parte nu a putut fi executată în registrul de calcul la timp.",
+    ),
     ("Nora could not be reached. Check the connection and try again.", "Nu s-a putut contacta Nora. Verificați conexiunea și încercați din nou."),
     ("Your session has expired. Sign in again.", "Sesiunea dumneavoastră a expirat. Conectați-vă din nou."),
     (

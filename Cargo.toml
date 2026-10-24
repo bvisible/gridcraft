@@ -75,8 +75,11 @@ epaint_default_fonts = "0.36"
 # pane offers to resume the request on the person's click (`NoraSession::resumable`, `NoraPanel::resume_words`).
 # //// Neoffice — 1f01bcc (24.10.2026): nothing given up at the tick back from a gap, an abandoned turn's action never plays
 # later, a long reply full of brackets read in linear time.
-craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "1f01bcc9d5f868014499b4e6b4e617bd9e228c06" }
-craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "1f01bcc9d5f868014499b4e6b4e617bd9e228c06" }
+# //// Neoffice — 620d408 (24.10.2026): each action is addressed to the turn's conversation and document, and a pane plays only
+# its own (two editors open, never the wrong one); a card after the final reply still shows, a refused change is never said
+# done (`correction_words`), and a freeze is kept without the server's queue times.
+craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "620d40879c708193063fd53a7f86415c44339ce0" }
+craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "620d40879c708193063fd53a7f86415c44339ce0" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -52,7 +52,7 @@ use craft_nora::{
     AppKind, CommandCall, CommandPolicy, Decision, DocActionKind, DocumentInfo, HttpRequest, HttpResponse, Input, NoraError, NoraSession, Output,
     PageContext, Selection, SessionConfig,
 };
-use craft_nora_ui::{NoraLabels, NoraPanel, NoraStyle, PanelAction, ResumeWords, drive};
+use craft_nora_ui::{CorrectionWords, NoraLabels, NoraPanel, NoraStyle, PanelAction, ResumeWords, drive};
 use egui::{Color32, RichText, Ui, vec2};
 use gridcraft_engine::core::{CellRef, RangeRef, col_to_letters};
 use gridcraft_engine::model::{Sheet, Visibility, Workbook};
@@ -254,6 +254,7 @@ fn show(app: &mut SheetApp, ui: &mut Ui) {
     outputs.extend(deliver_answers(app));
     app.nora.panel.labels = labels(language);
     app.nora.panel.resume_words = resume_words(language);
+    app.nora.panel.correction_words = correction_words(language);
     // The panel takes its words for a failure of the connection once, when it is made: given again each frame, as
     // the labels, so that they follow the interface language.
     app.nora.panel = std::mem::take(&mut app.nora.panel).with_error_words(error_worder(language));
@@ -1007,6 +1008,15 @@ fn resume_words(language: Language) -> ResumeWords {
     ResumeWords {
         said: language.tr("This tab was in the background: Nora could not act in the workbook.").to_string(),
         resume: language.tr("Nora|Resume").to_string(),
+    }
+}
+
+/// What the pane says of a reply of Nora's whose turn could not act in the workbook in time (written before she knew
+/// that her change was refused): in its place when nothing was done, under it when part was. In the interface language.
+fn correction_words(language: Language) -> CorrectionWords {
+    CorrectionWords {
+        nothing_done: language.tr("Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.").to_string(),
+        partly_done: language.tr("Not all of this was done: part of it could not run in the workbook in time.").to_string(),
     }
 }
 
@@ -1962,6 +1972,26 @@ mod tests {
     }
 
     /// The sentences of the pane are words of the interface language, not the core's English.
+    /// A reply that said a refused change was done is corrected in the interface language (`correction_words`).
+    #[test]
+    fn the_correction_of_a_refused_change_is_said_in_the_interface_language() {
+        let french = correction_words(Language::Fr);
+        assert!(french.nothing_done.starts_with("Rien n'a été fait dans le classeur"), "{}", french.nothing_done);
+        assert!(french.partly_done.starts_with("Tout n'a pas été fait"), "{}", french.partly_done);
+        for language in Language::ALL {
+            let words = correction_words(language);
+            assert!(!words.nothing_done.is_empty() && !words.partly_done.is_empty(), "{language:?}");
+            assert!(language == Language::En || !words.nothing_done.starts_with("Nothing was done"), "{language:?}: {}", words.nothing_done);
+        }
+        let (services, _outbox, _inbox) = connected();
+        let mut a = app(services);
+        a.run("app.language.set", json!({"language": "de"})).unwrap();
+        a.run("ui.nora", json!({"on": true})).unwrap();
+        let mut h = harness(a);
+        h.run_steps(2);
+        assert_eq!(h.state().nora.panel.correction_words.partly_done, correction_words(Language::De).partly_done);
+    }
+
     #[test]
     fn actions_are_described_with_the_pane_words() {
         assert_eq!(describe(Language::En, &DocActionKind::Save), "Save the workbook");
