@@ -273,7 +273,10 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                 if let Some(d) = app.session.active() {
                     if d.wb.vba_project.is_some() {
                         ui.add_space(12.0);
-                        ui.label(egui::RichText::new("Macros preserved (not executed)").font(theme::ui_font(12.5)).color(t.danger));
+                        // //// Neoffice — the status bar in the editor's language (i18n/neoffice.rs: French, German, Italian, Spanish).
+                        ui.label(
+                            egui::RichText::new(app.ui.language.tr("Macros preserved (not executed)")).font(theme::ui_font(12.5)).color(t.danger),
+                        );
                     }
                     if d.wb.calc.mode == gridcraft_engine::model::CalcMode::Manual {
                         ui.add_space(12.0);
@@ -283,7 +286,9 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                         ui.add_space(12.0);
                         let (si, c) = d.calc.circular[0];
                         let name = d.wb.sheet(si).map(|s| s.name.clone()).unwrap_or_default();
-                        ui.label(egui::RichText::new(format!("Circular References: {name}!{}", c.a1())).font(theme::ui_font(12.5)).color(t.danger));
+                        // //// Neoffice — the status bar in the editor's language (see above).
+                        let text = app.ui.language.tr("Circular References: {cell}").replace("{cell}", &format!("{name}!{}", c.a1()));
+                        ui.label(egui::RichText::new(text).font(theme::ui_font(12.5)).color(t.danger));
                     }
                     if app.session.clipboard.is_some() && app.editor.is_none() {
                         ui.add_space(12.0);
@@ -319,7 +324,8 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                     }
                     ui.add_space(10.0);
                     for (icon, tip, mode, cmd) in [
-                        (Icon::PageBreak, "Page Break Preview", "pageBreakPreview", "view.pageBreakPreview"),
+                        // //// Neoffice — the ribbon's label, which the catalogs translate, shown on one line below (`tr`).
+                        (Icon::PageBreak, "Page Break\nPreview", "pageBreakPreview", "view.pageBreakPreview"),
                         (Icon::PageLayout, "Page Layout", "pageLayout", "view.pageLayout"),
                         (Icon::Normal, "Normal", "normal", "view.normal"),
                     ] {
@@ -331,7 +337,8 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                             ui.painter().rect_filled(r, 3.0, t.hover);
                         }
                         icons::paint(ui.painter(), Rect::from_center_size(r.center(), vec2(14.0, 14.0)), icon, t.text_dim);
-                        if resp.on_hover_text(tip).clicked() {
+                        // //// Neoffice — the tooltip in the editor's language (upstream shows the English).
+                        if resp.on_hover_text(app.ui.language.tr(tip).replace('\n', " ")).clicked() {
                             app.run_or_alert(cmd, json!({}));
                         }
                     }
@@ -351,14 +358,18 @@ pub fn status_bar(app: &mut SheetApp, ui: &mut Ui) {
                                 .to_string()
                         };
                         let mut parts = Vec::new();
+                        // //// Neoffice — Sum, Count and Average in the editor's language (i18n/neoffice.rs); upstream writes them in English.
+                        let say = |label: &str, value: String| app.ui.language.tr(label).replace("{value}", &value);
                         if st.numeric > 0 {
-                            parts.push(format!("Sum: {}", fmt(st.sum)));
+                            parts.push(say("Sum: {value}", fmt(st.sum)));
                         }
                         if st.count > 0 {
-                            parts.push(format!("Count: {}", st.count));
+                            // //// Neoffice — see `say` above.
+                            parts.push(say("Count: {value}", st.count.to_string()));
                         }
                         if let Some(a) = st.average {
-                            parts.push(format!("Average: {}", fmt(a)));
+                            // //// Neoffice — see `say` above.
+                            parts.push(say("Average: {value}", fmt(a)));
                         }
                         for p in parts {
                             ui.label(egui::RichText::new(p).font(theme::ui_font(12.5)).color(t.text_dim));

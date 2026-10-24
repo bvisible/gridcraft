@@ -1,7 +1,8 @@
 // //// Neoffice — added file (no upstream equivalent): Neoffice's own interface strings, kept out of upstream's catalogs.
 
 //! The strings Neoffice added to GridCraft (the Nora assistant pane and its switch in File › Options,
-//! and the messages of the hosting page's bridge, see `apps/gridcraft-web/src/host.rs`), kept outside
+//! the messages of the hosting page's bridge, see `apps/gridcraft-web/src/host.rs`, and the status bar's words that
+//! upstream leaves in English, in four languages), kept outside
 //! upstream's catalogs. [`super::Language::tr`] asks here when the language's own catalog has no entry
 //! for a string, so an upstream merge never touches these, and a catalog that gains the same English
 //! string wins over these tables.
@@ -887,9 +888,69 @@ const ROMANIAN: &[(&str, &str)] = &[
     ),
 ];
 
+// The status bar (tabs.rs `status_bar`): upstream writes its Sum, Count and Average, its macro and circular-reference
+// notices and its zoom buttons' tooltips in English. Neoffice has them in French, German, Italian and Spanish only, the
+// languages its customers read; every other language shows them as upstream does. A language's own catalog still wins
+// (Italian has `Zoom In` and `Zoom Out`). Each table has the same English strings, in the same order.
+
+/// The status bar in French.
+const STATUS_BAR_FRENCH: &[(&str, &str)] = &[
+    ("Sum: {value}", "Somme : {value}"),
+    ("Count: {value}", "Nb (non vides) : {value}"),
+    ("Average: {value}", "Moyenne : {value}"),
+    ("Macros preserved (not executed)", "Macros conservées (non exécutées)"),
+    ("Circular References: {cell}", "Références circulaires : {cell}"),
+    ("Zoom In", "Zoom avant"),
+    ("Zoom Out", "Zoom arrière"),
+];
+
+/// The status bar in German.
+const STATUS_BAR_GERMAN: &[(&str, &str)] = &[
+    ("Sum: {value}", "Summe: {value}"),
+    ("Count: {value}", "Anzahl: {value}"),
+    ("Average: {value}", "Mittelwert: {value}"),
+    ("Macros preserved (not executed)", "Makros erhalten (nicht ausgeführt)"),
+    ("Circular References: {cell}", "Zirkelbezug: {cell}"),
+    ("Zoom In", "Vergrößern"),
+    ("Zoom Out", "Verkleinern"),
+];
+
+/// The status bar in Italian.
+const STATUS_BAR_ITALIAN: &[(&str, &str)] = &[
+    ("Sum: {value}", "Somma: {value}"),
+    ("Count: {value}", "Conteggio: {value}"),
+    ("Average: {value}", "Media: {value}"),
+    ("Macros preserved (not executed)", "Macro conservate (non eseguite)"),
+    ("Circular References: {cell}", "Riferimenti circolari: {cell}"),
+    ("Zoom In", "Ingrandisci"),
+    ("Zoom Out", "Riduci"),
+];
+
+/// The status bar in Spanish.
+const STATUS_BAR_SPANISH: &[(&str, &str)] = &[
+    ("Sum: {value}", "Suma: {value}"),
+    ("Count: {value}", "Recuento: {value}"),
+    ("Average: {value}", "Promedio: {value}"),
+    ("Macros preserved (not executed)", "Macros conservadas (no ejecutadas)"),
+    ("Circular References: {cell}", "Referencias circulares: {cell}"),
+    ("Zoom In", "Acercar"),
+    ("Zoom Out", "Alejar"),
+];
+
 /// `text` in `language`, when Neoffice has translated it. English has nothing to translate.
 pub(super) fn added(language: Language, text: &str) -> Option<&'static str> {
-    table(language).and_then(|table| find(table, text))
+    table(language).and_then(|table| find(table, text)).or_else(|| status_bar(language).and_then(|table| find(table, text)))
+}
+
+/// The status bar's words for a language that has them (see `STATUS_BAR_FRENCH`).
+fn status_bar(language: Language) -> Option<&'static [(&'static str, &'static str)]> {
+    match language {
+        Language::Fr => Some(STATUS_BAR_FRENCH),
+        Language::De => Some(STATUS_BAR_GERMAN),
+        Language::It => Some(STATUS_BAR_ITALIAN),
+        Language::Es => Some(STATUS_BAR_SPANISH),
+        _ => None,
+    }
 }
 
 /// Neoffice's table for a language other than English. The match is exhaustive: a language upstream adds
@@ -959,6 +1020,33 @@ mod tests {
                 assert!(!english.contains('…') || translated.contains('…'), "{language:?}: {english:?} keeps its …");
             }
         }
+    }
+
+    /// The four status bar tables: the same strings in the same order, placeholders kept, no English left, and each shown
+    /// in its language unless the language's own catalog has the string (it wins, as for every string of ours).
+    #[test]
+    fn the_status_bar_says_its_words_in_french_german_italian_and_spanish() {
+        let english: Vec<&str> = STATUS_BAR_FRENCH.iter().map(|(english, _)| *english).collect();
+        let catalogs: [(Language, fn(&str) -> Option<&'static str>); 4] = [
+            (Language::Fr, super::super::fr::translate),
+            (Language::De, super::super::de::translate),
+            (Language::It, super::super::it::translate),
+            (Language::Es, super::super::es::translate),
+        ];
+        for (language, catalog) in catalogs {
+            let table = status_bar(language).unwrap_or_default();
+            assert_eq!(table.iter().map(|(english, _)| *english).collect::<Vec<_>>(), english, "{language:?}");
+            for (english, translated) in table {
+                assert_eq!(placeholders(english), placeholders(translated), "{language:?}: {english:?}");
+                assert_eq!(translated.trim(), *translated, "{language:?}: stray whitespace in {translated:?}");
+                assert_ne!(translated, english, "{language:?}: {english:?} is not translated");
+                assert_eq!(language.tr(english), catalog(english).unwrap_or(*translated), "{language:?}: {english:?}");
+            }
+        }
+        assert_eq!(Language::Fr.tr("Sum: {value}"), "Somme : {value}");
+        assert_eq!(Language::En.tr("Sum: {value}"), "Sum: {value}");
+        assert_eq!(status_bar(Language::Ja), None, "other languages show upstream's English");
+        assert_eq!(Language::Ja.tr("Count: {value}"), "Count: {value}");
     }
 
     #[test]

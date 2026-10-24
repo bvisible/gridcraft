@@ -187,6 +187,12 @@ carry their own `//// Neoffice — added file` header.
   number starts editing with the `'` that keeps it text. Every other locale reads an apostrophe as text, and nothing
   computed (`VALUE()`, arithmetic on text) depends on the locale.
 
+- **The status bar in the editor's language** (marked lines in `crates/ui-egui/src/tabs.rs`, `status_bar`; the strings in
+  `crates/ui-egui/src/i18n/neoffice.rs`; test file `crates/ui-egui/tests/status_bar_language.rs`): upstream writes Sum, Count and
+  Average, the macro and circular-reference notices and the zoom buttons' tooltips in English. They are asked from `Language::tr`,
+  with Neoffice's translations in French, German, Italian and Spanish (Haiku; every other language shows upstream's English, and a
+  language's own catalog still wins), and the view buttons' tooltips use the ribbon's labels, which the catalogs translate.
+
 ## Files that cannot carry a comment
 
 | File | Why it is ours |
