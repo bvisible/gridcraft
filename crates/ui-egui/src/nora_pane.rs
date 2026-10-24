@@ -52,7 +52,7 @@ use craft_nora::{
     AppKind, CommandCall, CommandPolicy, Decision, DocActionKind, DocumentInfo, HttpRequest, HttpResponse, Input, NoraError, NoraSession, Output,
     PageContext, Selection, SessionConfig,
 };
-use craft_nora_ui::{NoraLabels, NoraPanel, NoraStyle, PanelAction, drive};
+use craft_nora_ui::{NoraLabels, NoraPanel, NoraStyle, PanelAction, ResumeWords, drive};
 use egui::{Color32, RichText, Ui, vec2};
 use gridcraft_engine::core::{CellRef, RangeRef, col_to_letters};
 use gridcraft_engine::model::{Sheet, Visibility, Workbook};
@@ -248,9 +248,12 @@ pub fn pane(app: &mut SheetApp, ui: &mut Ui) {
 /// Draws the pane's content and moves the conversation along.
 fn show(app: &mut SheetApp, ui: &mut Ui) {
     let language = app.ui.language;
-    let mut outputs = deliver_answers(app);
-    outputs.extend(drive(ui.ctx(), &mut app.nora.session));
+    // The frame's tick first, then the answers: after a gap without frames (a tab in the background) the session knows
+    // it before it reads an answer that waited in the page, whose action it then refuses rather than plays late.
+    let mut outputs = drive(ui.ctx(), &mut app.nora.session);
+    outputs.extend(deliver_answers(app));
     app.nora.panel.labels = labels(language);
+    app.nora.panel.resume_words = resume_words(language);
     // The panel takes its words for a failure of the connection once, when it is made: given again each frame, as
     // the labels, so that they follow the interface language.
     app.nora.panel = std::mem::take(&mut app.nora.panel).with_error_words(error_worder(language));
@@ -996,6 +999,14 @@ fn labels(language: Language) -> NoraLabels {
         refuse: tr("Refuse"),
         open: tr("Open"),
         describe: describer(language),
+    }
+}
+
+/// What the pane says under a request lost to a tab in the background, and its button, in the interface language.
+fn resume_words(language: Language) -> ResumeWords {
+    ResumeWords {
+        said: language.tr("This tab was in the background: Nora could not act in the workbook.").to_string(),
+        resume: language.tr("Nora|Resume").to_string(),
     }
 }
 

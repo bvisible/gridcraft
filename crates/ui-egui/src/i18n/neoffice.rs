@@ -55,6 +55,11 @@ const FRENCH: &[(&str, &str)] = &[
     ("Nora|Stop", "Arrêter"),
     ("Stopped.", "Arrêté."),
     ("Nora did not answer in time.", "Nora n'a pas répondu à temps."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "L'onglet était en arrière-plan : Nora n'a pas pu agir dans le classeur.",
+    ),
+    ("Nora|Resume", "Reprendre"),
     ("Nora could not be reached. Check the connection and try again.", "Nora n'a pas pu être jointe. Vérifiez la connexion et réessayez."),
     ("Your session has expired. Sign in again.", "Votre session a expiré. Reconnectez-vous."),
     (
@@ -106,6 +111,11 @@ const GERMAN: &[(&str, &str)] = &[
     ("Stopped.", "Gestoppt."),
     ("Nora did not answer in time.", "Nora hat nicht rechtzeitig geantwortet."),
     (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Dieser Tab war im Hintergrund: Nora konnte in der Arbeitsmappe nichts tun.",
+    ),
+    ("Nora|Resume", "Fortsetzen"),
+    (
         "Nora could not be reached. Check the connection and try again.",
         "Nora war nicht erreichbar. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     ),
@@ -155,6 +165,11 @@ const SPANISH: &[(&str, &str)] = &[
     ("Nora|Stop", "Detener"),
     ("Stopped.", "Detenido."),
     ("Nora did not answer in time.", "Nora no respondió a tiempo."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Esta pestaña estaba en segundo plano: Nora no pudo actuar en el libro de cálculo.",
+    ),
+    ("Nora|Resume", "Reintentar"),
     ("Nora could not be reached. Check the connection and try again.", "No se pudo contactar con Nora. Compruebe la conexión y vuelva a intentarlo."),
     ("Your session has expired. Sign in again.", "Su sesión ha caducado. Inicie sesión de nuevo."),
     (
@@ -205,6 +220,8 @@ const PORTUGUESE: &[(&str, &str)] = &[
     ("Nora|Stop", "Parar"),
     ("Stopped.", "Interrompido."),
     ("Nora did not answer in time.", "A Nora não respondeu a tempo."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Esta aba estava em segundo plano: a Nora não pôde agir na planilha."),
+    ("Nora|Resume", "Retomar"),
     ("Nora could not be reached. Check the connection and try again.", "Não foi possível conectar à Nora. Verifique a conexão e tente novamente."),
     ("Your session has expired. Sign in again.", "Sua sessão expirou. Entre novamente."),
     (
@@ -255,6 +272,11 @@ const RUSSIAN: &[(&str, &str)] = &[
     ("Nora|Stop", "Остановить"),
     ("Stopped.", "Остановлено."),
     ("Nora did not answer in time.", "Nora не ответила вовремя."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Эта вкладка была в фоновом режиме: Nora не могла выполнить действие в книге.",
+    ),
+    ("Nora|Resume", "Повторить"),
     ("Nora could not be reached. Check the connection and try again.", "Не удалось связаться с Nora. Проверьте подключение и повторите попытку."),
     ("Your session has expired. Sign in again.", "Ваш сеанс истёк. Войдите снова."),
     (
@@ -302,6 +324,8 @@ const CZECH: &[(&str, &str)] = &[
     ("Nora|Stop", "Zastavit"),
     ("Stopped.", "Zastaveno."),
     ("Nora did not answer in time.", "Nora neodpověděla včas."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Tato karta byla na pozadí: Nora nemohla v sešitu provést akci."),
+    ("Nora|Resume", "Pokračovat"),
     ("Nora could not be reached. Check the connection and try again.", "Nora není dostupná. Zkontrolujte připojení a zkuste to znovu."),
     ("Your session has expired. Sign in again.", "Vaše relace vypršela. Přihlaste se znovu."),
     ("The server could not answer (error {status}). Try again in a moment.", "Server nemohl odpovědět (chyba {status}). Zkuste to za chvíli znovu."),
@@ -346,6 +370,11 @@ const JAPANESE: &[(&str, &str)] = &[
     ("Nora|Stop", "停止"),
     ("Stopped.", "停止しました。"),
     ("Nora did not answer in time.", "Nora からの応答が時間内に届きませんでした。"),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "このタブはバックグラウンドにあったため、Nora はブック内で操作できませんでした。",
+    ),
+    ("Nora|Resume", "再開"),
     ("Nora could not be reached. Check the connection and try again.", "Nora に接続できませんでした。接続を確認して、もう一度お試しください。"),
     ("Your session has expired. Sign in again.", "セッションの有効期限が切れました。もう一度サインインしてください。"),
     (
@@ -390,6 +419,8 @@ const CHINESE: &[(&str, &str)] = &[
     ("Nora|Stop", "停止"),
     ("Stopped.", "已停止。"),
     ("Nora did not answer in time.", "Nora 未能及时回复。"),
+    ("This tab was in the background: Nora could not act in the workbook.", "该标签页处于后台：Nora 无法在工作簿中执行操作。"),
+    ("Nora|Resume", "恢复"),
     ("Nora could not be reached. Check the connection and try again.", "无法连接到 Nora。请检查网络连接后重试。"),
     ("Your session has expired. Sign in again.", "您的会话已过期，请重新登录。"),
     ("The server could not answer (error {status}). Try again in a moment.", "服务器无法响应（错误 {status}）。请稍后重试。"),
@@ -434,6 +465,8 @@ const KOREAN: &[(&str, &str)] = &[
     ("Nora|Stop", "중지"),
     ("Stopped.", "중지되었습니다."),
     ("Nora did not answer in time.", "Nora가 제시간에 응답하지 않았습니다."),
+    ("This tab was in the background: Nora could not act in the workbook.", "이 탭이 백그라운드에 있어서 Nora가 통합 문서에서 작업할 수 없었습니다."),
+    ("Nora|Resume", "다시 시작"),
     ("Nora could not be reached. Check the connection and try again.", "Nora에 연결할 수 없습니다. 연결 상태를 확인하고 다시 시도해 주세요."),
     ("Your session has expired. Sign in again.", "세션이 만료되었습니다. 다시 로그인해 주세요."),
     (
@@ -481,6 +514,8 @@ const SERBIAN: &[(&str, &str)] = &[
     ("Nora|Stop", "Zaustavi"),
     ("Stopped.", "Zaustavljeno."),
     ("Nora did not answer in time.", "Nora nije odgovorila na vreme."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Ovaj tab je bio u pozadini: Nora nije mogla da deluje u radnoj svesci."),
+    ("Nora|Resume", "Nastavi"),
     ("Nora could not be reached. Check the connection and try again.", "Nije moguće stupiti u vezu sa Norom. Proveri vezu i pokušaj ponovo."),
     ("Your session has expired. Sign in again.", "Sesija je istekla. Prijavi se ponovo."),
     (
@@ -531,6 +566,11 @@ const GREEK: &[(&str, &str)] = &[
     ("Nora|Stop", "Διακοπή"),
     ("Stopped.", "Διακόπηκε."),
     ("Nora did not answer in time.", "Η Nora δεν απάντησε εγκαίρως."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Αυτή η καρτέλα ήταν στο παρασκήνιο: η Nora δεν μπόρεσε να ενεργήσει στο βιβλίο εργασίας.",
+    ),
+    ("Nora|Resume", "Επανάληψη"),
     (
         "Nora could not be reached. Check the connection and try again.",
         "Δεν ήταν δυνατή η σύνδεση με τη Nora. Ελέγξτε τη σύνδεση και δοκιμάστε ξανά.",
@@ -584,6 +624,8 @@ const TURKISH: &[(&str, &str)] = &[
     ("Nora|Stop", "Durdur"),
     ("Stopped.", "Durduruldu."),
     ("Nora did not answer in time.", "Nora zamanında yanıt vermedi."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Bu sekme arka plandaydı: Nora çalışma kitabında işlem yapamadı."),
+    ("Nora|Resume", "Devam et"),
     ("Nora could not be reached. Check the connection and try again.", "Nora'ya ulaşılamadı. Bağlantıyı kontrol edip yeniden deneyin."),
     ("Your session has expired. Sign in again.", "Oturumunuzun süresi doldu. Yeniden oturum açın."),
     ("The server could not answer (error {status}). Try again in a moment.", "Sunucu yanıt veremedi (hata {status}). Birazdan yeniden deneyin."),
@@ -631,6 +673,8 @@ const POLISH: &[(&str, &str)] = &[
     ("Nora|Stop", "Zatrzymaj"),
     ("Stopped.", "Zatrzymano."),
     ("Nora did not answer in time.", "Nora nie odpowiedziała na czas."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Ta karta była w tle: Nora nie mogła wykonać działania w skoroszycie."),
+    ("Nora|Resume", "Wznów"),
     ("Nora could not be reached. Check the connection and try again.", "Nie udało się połączyć z Norą. Sprawdź połączenie i spróbuj ponownie."),
     ("Your session has expired. Sign in again.", "Twoja sesja wygasła. Zaloguj się ponownie."),
     (
@@ -681,6 +725,11 @@ const ITALIAN: &[(&str, &str)] = &[
     ("Nora|Stop", "Interrompi"),
     ("Stopped.", "Interrotto."),
     ("Nora did not answer in time.", "Nora non ha risposto in tempo."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Questa scheda era in background: Nora non ha potuto agire nella cartella di lavoro.",
+    ),
+    ("Nora|Resume", "Riprendi"),
     ("Nora could not be reached. Check the connection and try again.", "Impossibile raggiungere Nora. Controlla la connessione e riprova."),
     ("Your session has expired. Sign in again.", "La sessione è scaduta. Accedi di nuovo."),
     (
@@ -731,6 +780,8 @@ const UKRAINIAN: &[(&str, &str)] = &[
     ("Nora|Stop", "Зупинити"),
     ("Stopped.", "Зупинено."),
     ("Nora did not answer in time.", "Nora не відповіла вчасно."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Ця вкладка була у фоновому режимі: Nora не могла виконати дію в книзі."),
+    ("Nora|Resume", "Повторити"),
     ("Nora could not be reached. Check the connection and try again.", "Не вдалося зв'язатися з Nora. Перевірте з'єднання та спробуйте ще раз."),
     ("Your session has expired. Sign in again.", "Ваш сеанс завершився. Увійдіть знову."),
     ("The server could not answer (error {status}). Try again in a moment.", "Сервер не зміг відповісти (помилка {status}). Спробуйте за хвилину."),
@@ -775,6 +826,8 @@ const VIETNAMESE: &[(&str, &str)] = &[
     ("Nora|Stop", "Dừng"),
     ("Stopped.", "Đã dừng."),
     ("Nora did not answer in time.", "Nora không trả lời kịp thời."),
+    ("This tab was in the background: Nora could not act in the workbook.", "Thẻ này đang ở chế độ nền: Nora không thể thao tác trong sổ tính."),
+    ("Nora|Resume", "Tiếp tục"),
     ("Nora could not be reached. Check the connection and try again.", "Không thể kết nối với Nora. Hãy kiểm tra kết nối và thử lại."),
     ("Your session has expired. Sign in again.", "Phiên của bạn đã hết hạn. Hãy đăng nhập lại."),
     ("The server could not answer (error {status}). Try again in a moment.", "Máy chủ không thể phản hồi (lỗi {status}). Hãy thử lại sau ít phút."),
@@ -822,6 +875,11 @@ const DUTCH: &[(&str, &str)] = &[
     ("Nora|Stop", "Stoppen"),
     ("Stopped.", "Gestopt."),
     ("Nora did not answer in time.", "Nora heeft niet op tijd geantwoord."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Dit tabblad stond op de achtergrond: Nora kon niet handelen in de werkmap.",
+    ),
+    ("Nora|Resume", "Hervatten"),
     (
         "Nora could not be reached. Check the connection and try again.",
         "Nora kon niet worden bereikt. Controleer de verbinding en probeer het opnieuw.",
@@ -875,6 +933,11 @@ const ROMANIAN: &[(&str, &str)] = &[
     ("Nora|Stop", "Oprire"),
     ("Stopped.", "Oprit."),
     ("Nora did not answer in time.", "Nora nu a răspuns la timp."),
+    (
+        "This tab was in the background: Nora could not act in the workbook.",
+        "Această filă era în fundal: Nora nu a putut acționa în registrul de calcul.",
+    ),
+    ("Nora|Resume", "Reluare"),
     ("Nora could not be reached. Check the connection and try again.", "Nu s-a putut contacta Nora. Verificați conexiunea și încercați din nou."),
     ("Your session has expired. Sign in again.", "Sesiunea dumneavoastră a expirat. Conectați-vă din nou."),
     (
