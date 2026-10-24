@@ -73,8 +73,10 @@ epaint_default_fonts = "0.36"
 # shows as it comes (bcc831f); the panel builds on egui 0.36 or 0.37 and reads where the transcript is scrolled from the viewport.
 # //// Neoffice — ed1cb40 (24.10.2026): an action that waited for a tab in the background is refused, never played late, and the
 # pane offers to resume the request on the person's click (`NoraSession::resumable`, `NoraPanel::resume_words`).
-craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "ed1cb402e5c2784532d76215e27747d1dc8de10f" }
-craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "ed1cb402e5c2784532d76215e27747d1dc8de10f" }
+# //// Neoffice — 1f01bcc (24.10.2026): nothing given up at the tick back from a gap, an abandoned turn's action never plays
+# later, a long reply full of brackets read in linear time.
+craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "1f01bcc9d5f868014499b4e6b4e617bd9e228c06" }
+craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "1f01bcc9d5f868014499b4e6b4e617bd9e228c06" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
