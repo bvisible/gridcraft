@@ -69,8 +69,10 @@ epaint_default_fonts = "0.36"
 # //// Neoffice — d04a313 (23.10.2026): Nora's little Markdown drawn in her bubbles, not printed (bold, italic, code, lists).
 # //// Neoffice — 72445c1 (23.10.2026): with no bold face of the app (`bold_family: None`), her bold words drawn twice a pixel apart.
 # //// Neoffice — 5ffc07c (24.10.2026): craft-libs with upstream's main merged (7895f5e), and the appointment card of NeoMail.
-craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "5ffc07cc44079e117e44a12514c10cfe39b263b5" }
-craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "5ffc07cc44079e117e44a12514c10cfe39b263b5" }
+# //// Neoffice — 4f48d82 (24.10.2026): a slow turn is not given up on the clock alone (a tab in the background), its late answer
+# shows as it comes (bcc831f); the panel builds on egui 0.36 or 0.37 and reads where the transcript is scrolled from the viewport.
+craft-nora = { git = "https://github.com/bvisible/craft-libs", rev = "4f48d82591133e2ba10fc9850464fce6a8f046e4" }
+craft-nora-ui = { git = "https://github.com/bvisible/craft-libs", rev = "4f48d82591133e2ba10fc9850464fce6a8f046e4" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
