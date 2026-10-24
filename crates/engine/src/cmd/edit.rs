@@ -165,7 +165,10 @@ pub(crate) fn input_to_cell(input: &str, sheet: usize, at: CellRef, wb: &mut gri
         }
         return Ok(Some(cell));
     }
-    let mut parsed = gridcraft_core::parse::parse_input(input, wb.date_system);
+    // //// Neoffice — a number typed with the thousands separator the editor shows (`5'478.45` in a Swiss editor) is a
+    // number, read as the same entry with commas (locale_input); anything else is read as typed.
+    let regrouped = crate::locale_input::regroup(input, gridcraft_numfmt::display_grouping());
+    let mut parsed = gridcraft_core::parse::parse_input(regrouped.as_deref().unwrap_or(input), wb.date_system);
     // Like Excel's automatic percent entry: a bare number of 1 or more typed into a cell already
     // formatted as a percentage is a percent (3 -> 3%); smaller numbers are taken as fractions.
     if parsed.format.is_none()

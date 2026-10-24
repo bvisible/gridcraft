@@ -15,6 +15,8 @@ pub mod display;
 pub mod fill;
 pub mod io;
 pub mod links;
+// //// Neoffice — added module: a number typed with the thousands separator the editor shows (`5'478.45` in Switzerland).
+mod locale_input;
 pub mod outline;
 pub mod paper;
 pub mod pivot;

@@ -172,6 +172,21 @@ carry their own `//// Neoffice — added file` header.
   ours in `apps/gridcraft-web/index.html`. Stored or compared names (storage folders, `GridCraft User`, `gridcraft:*`
   messages, `ai.storyteller.*`) and the native app (window title, macOS menu) keep upstream's.
 
+- **The thousands separator follows the editor's locale** (new file `crates/ui-egui/src/number_locale.rs`; marked lines in
+  `crates/numfmt/src/lib.rs`, `crates/numfmt/src/render.rs`, `crates/numfmt/src/tests.rs`, `crates/ui-egui/src/lib.rs`,
+  `apps/gridcraft-web/src/flags.rs`, `apps/gridcraft-web/src/web.rs` and `apps/gridcraft/src/main.rs`): `#,##0.00` asks for
+  the locale's separator, as Excel takes it from the regional settings, and a Swiss locale (`fr-CH`, `de-CH`, `it-CH`,
+  `rm-CH`, `de-LI`; the hosting page's `?locale=`, else the browser's or the system's) shows `CHF 5'478.45`; every other
+  keeps the comma, the decimal point stays a point. Only what is shown changes (`numfmt::format_value`, through
+  `set_display_grouping`): `TEXT()` and the saved workbook are the same for everyone. **What is typed back that way is
+  a number** (new file `crates/engine/src/locale_input.rs`, a marked `mod` line in `crates/engine/src/lib.rs`, marked
+  lines in `input_to_cell` of `crates/engine/src/cmd/edit.rs` and in `crates/engine/src/display.rs`; test file
+  `crates/engine/tests/swiss_input.rs`): in a Swiss editor `5'478.45`, `-1'000` or `1'234'567.5` (apostrophes, or the
+  typographic U+2019, grouping the whole part in threes) is read as the same entry with commas, so it gets upstream's
+  automatic `#,##0` or `#,##0.00`; `12'3` and a leading apostrophe stay text, and a text cell that would read back as a
+  number starts editing with the `'` that keeps it text. Every other locale reads an apostrophe as text, and nothing
+  computed (`VALUE()`, arithmetic on text) depends on the locale.
+
 ## Files that cannot carry a comment
 
 | File | Why it is ours |

@@ -50,6 +50,8 @@ fn text_needs_quote_prefix(t: &str, sys: gridcraft_core::date::DateSystem) -> bo
         return true;
     }
     !matches!(gridcraft_core::parse::parse_input(t, sys).value, Value::Text(ref x) if x.as_ref() == t)
+        // //// Neoffice — text that a Swiss editor would read back as a number (`5'478.45`, locale_input) keeps its `'` too.
+        || crate::locale_input::regroup(t, gridcraft_numfmt::display_grouping()).is_some()
 }
 
 /// What the cell editor and the formula bar start from. Same as `Cell::input_text`, except that a
