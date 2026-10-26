@@ -101,8 +101,9 @@ pub fn start() {
                         bridge.ready(&mut app);
                     }
                     // //// Neoffice — see `nora` above: the pane is open when the page offers Nora and closed when it doesn't (a
-                    // pane left open on a visit that had Nora would say she isn't available on one that hasn't).
-                    if let Err(e) = app.run("ui.nora", serde_json::json!({"on": nora.is_some()})) {
+                    // pane left open on a visit that had Nora would say she isn't available on one that hasn't); closed too
+                    // when the person closed it on an earlier visit (remembered in the browser, nora_pane::open_as_remembered).
+                    if let Err(e) = gridcraft_ui_egui::nora_pane::open_as_remembered(&mut app, nora.is_some()) {
                         log::error!("the Nora pane could not be set: {e}");
                     }
                     Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, prefs }))

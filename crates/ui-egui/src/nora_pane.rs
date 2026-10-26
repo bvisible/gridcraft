@@ -52,7 +52,7 @@ use craft_nora::{
     AppKind, CommandCall, CommandPolicy, Decision, DocActionKind, DocumentInfo, HttpRequest, HttpResponse, Input, NoraError, NoraSession, Output,
     PageContext, Selection, SessionConfig,
 };
-use craft_nora_ui::{CorrectionWords, NoraLabels, NoraPanel, NoraStyle, PanelAction, ResumeWords, drive};
+use craft_nora_ui::{CorrectionWords, LauncherWords, NoraLabels, NoraPanel, NoraStyle, PaneMemory, PanelAction, ResumeWords, drive};
 use egui::{Color32, RichText, Ui, vec2};
 use gridcraft_engine::core::{CellRef, RangeRef, col_to_letters};
 use gridcraft_engine::model::{Sheet, Visibility, Workbook};
@@ -221,10 +221,30 @@ struct Change {
     after: u64,
 }
 
+/// The name the pane's state is remembered under in the browser (craft-nora-ui `PaneMemory`).
+const MEMORY: &str = "gridcraft";
+
+/// Turns the pane on where the page offers Nora, unless the person closed it on an earlier visit (remembered in the
+/// browser, open when nothing is); off where Nora isn't offered (a pane left open would say she isn't available).
+pub fn open_as_remembered(app: &mut SheetApp, offered: bool) -> Result<Json, String> {
+    app.run("ui.nora", json!({"on": offered && PaneMemory::new(MEMORY).open()}))
+}
+
 /// The pane at the right of the window, outermost, while `ui.nora` has it on: GridCraft's own title
-/// and close button above Nora's panel.
+/// and close button above Nora's panel. Closed by its cross where Nora is offered, a rail with her sphere stays in its
+/// place, beside the workbook, and opens it again on the same conversation (craft-nora-ui `launcher`).
 pub fn pane(app: &mut SheetApp, ui: &mut Ui) {
     if !app.ui.nora_pane {
+        if app.services.nora_http.is_some() {
+            let t = Tokens::get(ui.ctx());
+            let words = LauncherWords { open: app.ui.language.tr("Nora|Open Nora").to_string() };
+            let frame = egui::Frame::NONE.fill(t.ribbon).inner_margin(egui::Margin::symmetric(0, 10));
+            let response = craft_nora_ui::launcher::rail(ui, frame, &words);
+            response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &words.open));
+            if response.clicked() && app.run("ui.nora", json!({"on": true})).is_ok() {
+                PaneMemory::new(MEMORY).remember(true);
+            }
+        }
         return;
     }
     let t = Tokens::get(ui.ctx());
@@ -239,6 +259,7 @@ pub fn pane(app: &mut SheetApp, ui: &mut Ui) {
         ui.separator();
         if close {
             let _ = app.run("ui.nora", json!({"on": false}));
+            PaneMemory::new(MEMORY).remember(false);
             return;
         }
         show(app, ui);
@@ -1220,6 +1241,46 @@ mod tests {
         // Settings saved before the pane existed leave it off.
         let old: crate::UiState = serde_json::from_str(r#"{"ribbonTab":"Insert"}"#).unwrap();
         assert!(!old.nora_pane);
+    }
+
+    /// Closed, the pane leaves a rail with Nora's sphere at the right edge where Nora is offered; its click opens the pane
+    /// again on the same conversation. Where Nora isn't offered, no rail. Outside a browser nothing is remembered: the
+    /// pane opens as before.
+    #[test]
+    fn a_closed_pane_leaves_a_rail_that_opens_it_again() {
+        let (services, outbox, inbox) = connected();
+        let mut a = app(services);
+        assert_eq!(open_as_remembered(&mut a, true).unwrap(), json!({"on": true}), "open where Nora is offered");
+        let mut h = harness(a);
+        h.run();
+        let _ = ask(&mut h, &outbox, &inbox, "Bonjour");
+        assert_eq!(h.state().nora.session.thread_id(), Some("t1"));
+        assert!(h.query_by_label("Open Nora").is_none(), "no rail while the pane is open");
+        h.state_mut().run("ui.nora", json!({"on": false})).unwrap();
+        h.run();
+        let rail = h.get_by_label("Open Nora").rect();
+        assert!(rail.max.x >= 1440.0 - 1.0 && rail.min.x >= 1440.0 - craft_nora_ui::launcher::RAIL_WIDTH, "at the right edge: {rail:?}");
+        h.get_by_label("Open Nora").click();
+        h.run();
+        assert!(h.state().ui.nora_pane, "open again");
+        assert_eq!(h.state().nora.session.thread_id(), Some("t1"), "on the same conversation");
+        assert!(h.query_by_label("Open Nora").is_none());
+        // Where Nora isn't offered: no pane, no rail.
+        let mut alone = app(Services::default());
+        assert_eq!(open_as_remembered(&mut alone, false).unwrap(), json!({"on": false}));
+        let mut h = harness(alone);
+        h.run();
+        assert!(h.query_by_label("Open Nora").is_none());
+    }
+
+    /// The rail's words are the interface language's.
+    #[test]
+    fn the_rail_speaks_the_interface_language() {
+        assert_eq!(Language::Fr.tr("Nora|Open Nora"), "Ouvrir Nora");
+        assert_eq!(Language::En.tr("Nora|Open Nora"), "Open Nora");
+        for language in Language::ALL {
+            assert!(!language.tr("Nora|Open Nora").contains('|'), "{language:?}");
+        }
     }
 
     /// File › Options › Assistant is the `ui.nora` setting.
