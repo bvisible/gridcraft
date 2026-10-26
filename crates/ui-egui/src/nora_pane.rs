@@ -1256,13 +1256,14 @@ mod tests {
         let _ = ask(&mut h, &outbox, &inbox, "Bonjour");
         assert_eq!(h.state().nora.session.thread_id(), Some("t1"));
         assert!(h.query_by_label("Open Nora").is_none(), "no rail while the pane is open");
+        // The turn runs on (the pane keeps asking for frames): frames are stepped rather than run to rest.
         h.state_mut().run("ui.nora", json!({"on": false})).unwrap();
-        h.run();
+        h.run_steps(4);
         let rail = h.get_by_label("Open Nora").rect();
         // At the right edge (the test window keeps a margin of its own).
         assert!(rail.min.x >= 1440.0 - craft_nora_ui::launcher::RAIL_WIDTH - 16.0, "at the right edge: {rail:?}");
         h.get_by_label("Open Nora").click();
-        h.run();
+        h.run_steps(4);
         assert!(h.state().ui.nora_pane, "open again");
         assert_eq!(h.state().nora.session.thread_id(), Some("t1"), "on the same conversation");
         assert!(h.query_by_label("Open Nora").is_none());
