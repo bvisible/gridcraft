@@ -230,21 +230,29 @@ pub fn open_as_remembered(app: &mut SheetApp, offered: bool) -> Result<Json, Str
     app.run("ui.nora", json!({"on": offered && PaneMemory::new(MEMORY).open()}))
 }
 
+/// Nora's button in the title bar, at the right with its icons, whatever tab of the ribbon is in view, where the page
+/// offers Nora (craft-nora-ui `launcher::button`, NeoMail's « Ask Nora »): a click opens or closes the pane on the same
+/// conversation, and the person's choice is remembered in the browser. Lit while the pane is open.
+pub fn top_button(app: &mut SheetApp, ui: &mut Ui) {
+    if app.services.nora_http.is_none() {
+        return;
+    }
+    let language = app.ui.language;
+    let words = LauncherWords { label: language.tr("Nora|Ask Nora").to_string(), tip: language.tr("Nora|Nora, the Neoffice assistant").to_string() };
+    let open = app.ui.nora_pane;
+    ui.add_space(4.0);
+    let response = craft_nora_ui::launcher::button(ui, &words, open);
+    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, open, &words.label));
+    if response.clicked() && app.run("ui.nora", json!({"on": !open})).is_ok() {
+        PaneMemory::new(MEMORY).remember(!open);
+    }
+}
+
 /// The pane at the right of the window, outermost, while `ui.nora` has it on: GridCraft's own title
-/// and close button above Nora's panel. Closed by its cross where Nora is offered, a rail with her sphere stays in its
-/// place, beside the workbook, and opens it again on the same conversation (craft-nora-ui `launcher`).
+/// and close button above Nora's panel. Closed, it leaves the whole width to the workbook; Nora's button in the title bar
+/// opens it again ([`top_button`]).
 pub fn pane(app: &mut SheetApp, ui: &mut Ui) {
     if !app.ui.nora_pane {
-        if app.services.nora_http.is_some() {
-            let t = Tokens::get(ui.ctx());
-            let words = LauncherWords { open: app.ui.language.tr("Nora|Open Nora").to_string() };
-            let frame = egui::Frame::NONE.fill(t.ribbon).inner_margin(egui::Margin::symmetric(0, 10));
-            let response = craft_nora_ui::launcher::rail(ui, frame, &words);
-            response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &words.open));
-            if response.clicked() && app.run("ui.nora", json!({"on": true})).is_ok() {
-                PaneMemory::new(MEMORY).remember(true);
-            }
-        }
         return;
     }
     let t = Tokens::get(ui.ctx());
@@ -1243,11 +1251,11 @@ mod tests {
         assert!(!old.nora_pane);
     }
 
-    /// Closed, the pane leaves a rail with Nora's sphere at the right edge where Nora is offered; its click opens the pane
-    /// again on the same conversation. Where Nora isn't offered, no rail. Outside a browser nothing is remembered: the
-    /// pane opens as before.
+    /// Nora's button in the title bar closes the pane and opens it again, on the same conversation; it is there only where
+    /// Nora is offered, whatever tab of the ribbon is in view. Outside a browser nothing is remembered: the pane opens as
+    /// before.
     #[test]
-    fn a_closed_pane_leaves_a_rail_that_opens_it_again() {
+    fn nora_s_button_in_the_title_bar_closes_and_opens_the_pane() {
         let (services, outbox, inbox) = connected();
         let mut a = app(services);
         assert_eq!(open_as_remembered(&mut a, true).unwrap(), json!({"on": true}), "open where Nora is offered");
@@ -1255,33 +1263,34 @@ mod tests {
         h.run();
         let _ = ask(&mut h, &outbox, &inbox, "Bonjour");
         assert_eq!(h.state().nora.session.thread_id(), Some("t1"));
-        assert!(h.query_by_label("Open Nora").is_none(), "no rail while the pane is open");
         // The turn runs on (the pane keeps asking for frames): frames are stepped rather than run to rest.
-        h.state_mut().run("ui.nora", json!({"on": false})).unwrap();
+        let button = h.get_by_label("Ask Nora").rect();
+        assert!(button.max.y < 50.0, "in the title bar (the test window keeps a margin of its own): {button:?}");
+        h.get_by_label("Ask Nora").click();
         h.run_steps(4);
-        let rail = h.get_by_label("Open Nora").rect();
-        // At the right edge (the test window keeps a margin of its own).
-        assert!(rail.min.x >= 1440.0 - craft_nora_ui::launcher::RAIL_WIDTH - 16.0, "at the right edge: {rail:?}");
-        h.get_by_label("Open Nora").click();
+        assert!(!h.state().ui.nora_pane, "closed");
+        h.state_mut().run("ui.ribbonTab", json!({"tab": "Data"})).unwrap();
         h.run_steps(4);
-        assert!(h.state().ui.nora_pane, "open again");
+        h.get_by_label("Ask Nora").click();
+        h.run_steps(4);
+        assert!(h.state().ui.nora_pane, "open again, from another tab of the ribbon");
         assert_eq!(h.state().nora.session.thread_id(), Some("t1"), "on the same conversation");
-        assert!(h.query_by_label("Open Nora").is_none());
-        // Where Nora isn't offered: no pane, no rail.
+        // Where Nora isn't offered: no pane, no button.
         let mut alone = app(Services::default());
         assert_eq!(open_as_remembered(&mut alone, false).unwrap(), json!({"on": false}));
         let mut h = harness(alone);
         h.run();
-        assert!(h.query_by_label("Open Nora").is_none());
+        assert!(h.query_by_label("Ask Nora").is_none());
     }
 
-    /// The rail's words are the interface language's.
+    /// The button's words are the interface language's.
     #[test]
-    fn the_rail_speaks_the_interface_language() {
-        assert_eq!(Language::Fr.tr("Nora|Open Nora"), "Ouvrir Nora");
-        assert_eq!(Language::En.tr("Nora|Open Nora"), "Open Nora");
+    fn nora_s_button_speaks_the_interface_language() {
+        assert_eq!(Language::Fr.tr("Nora|Ask Nora"), "Demander à Nora");
+        assert_eq!(Language::En.tr("Nora|Ask Nora"), "Ask Nora");
+        assert_eq!(Language::De.tr("Nora|Nora, the Neoffice assistant"), "Nora, die Neoffice-Assistentin");
         for language in Language::ALL {
-            assert!(!language.tr("Nora|Open Nora").contains('|'), "{language:?}");
+            assert!(!language.tr("Nora|Ask Nora").contains('|'), "{language:?}");
         }
     }
 

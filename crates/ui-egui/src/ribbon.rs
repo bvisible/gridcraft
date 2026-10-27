@@ -159,6 +159,7 @@ pub fn title_bar(app: &mut SheetApp, ui: &mut Ui) {
                     act(app, "view.darkMode", json!({}));
                 }
                 theme.context_menu(|ui| theme_choices(app, ui));
+                crate::nora_pane::top_button(app, ui); // //// Neoffice — Nora's button, where the page offers her (nora_pane.rs) ////
                 ui.min_rect().left()
             });
             // Centred title, cut with "…" so it never runs under the controls on either side.

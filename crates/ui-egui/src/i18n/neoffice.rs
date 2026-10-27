@@ -60,7 +60,8 @@ const FRENCH: &[(&str, &str)] = &[
         "L'onglet était en arrière-plan : Nora n'a pas pu agir dans le classeur.",
     ),
     ("Nora|Resume", "Reprendre"),
-    ("Nora|Open Nora", "Ouvrir Nora"),
+    ("Nora|Ask Nora", "Demander à Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, l’assistante Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Rien n'a été fait dans le classeur : Nora n'a pas pu y agir à temps. Demandez à nouveau si vous en avez encore besoin.",
@@ -124,7 +125,8 @@ const GERMAN: &[(&str, &str)] = &[
         "Dieser Tab war im Hintergrund: Nora konnte in der Arbeitsmappe nichts tun.",
     ),
     ("Nora|Resume", "Fortsetzen"),
-    ("Nora|Open Nora", "Nora öffnen"),
+    ("Nora|Ask Nora", "Nora fragen"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, die Neoffice-Assistentin"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Nichts wurde in der Arbeitsmappe getan: Nora konnte nicht rechtzeitig darin handeln. Fragen Sie erneut, falls Sie es noch benötigen.",
@@ -188,7 +190,8 @@ const SPANISH: &[(&str, &str)] = &[
         "Esta pestaña estaba en segundo plano: Nora no pudo actuar en el libro de cálculo.",
     ),
     ("Nora|Resume", "Reintentar"),
-    ("Nora|Open Nora", "Abrir Nora"),
+    ("Nora|Ask Nora", "Preguntar a Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, la asistente de Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "No se hizo nada en el libro de cálculo: Nora no pudo actuar en él a tiempo. Vuelva a pedirlo si todavía lo necesita.",
@@ -249,7 +252,8 @@ const PORTUGUESE: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "A Nora não respondeu a tempo."),
     ("This tab was in the background: Nora could not act in the workbook.", "Esta aba estava em segundo plano: a Nora não pôde agir na planilha."),
     ("Nora|Resume", "Retomar"),
-    ("Nora|Open Nora", "Abrir Nora"),
+    ("Nora|Ask Nora", "Perguntar à Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, a assistente Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Nada foi feito na planilha: a Nora não pôde agir nela a tempo. Peça novamente se ainda precisar.",
@@ -313,7 +317,8 @@ const RUSSIAN: &[(&str, &str)] = &[
         "Эта вкладка была в фоновом режиме: Nora не могла выполнить действие в книге.",
     ),
     ("Nora|Resume", "Повторить"),
-    ("Nora|Open Nora", "Открыть Nora"),
+    ("Nora|Ask Nora", "Спросить Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, ассистентка Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "В книге ничего не было сделано: Nora не смогла выполнить действие в ней вовремя. Повторите запрос, если он вам ещё нужен.",
@@ -371,7 +376,8 @@ const CZECH: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora neodpověděla včas."),
     ("This tab was in the background: Nora could not act in the workbook.", "Tato karta byla na pozadí: Nora nemohla v sešitu provést akci."),
     ("Nora|Resume", "Pokračovat"),
-    ("Nora|Open Nora", "Otevřít Nora"),
+    ("Nora|Ask Nora", "Zeptat se Nory"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, asistentka Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "V sešitu nebylo nic provedeno: Nora v něm nestihla jednat včas. Zadejte to znovu, pokud to ještě potřebujete.",
@@ -429,7 +435,8 @@ const JAPANESE: &[(&str, &str)] = &[
         "このタブはバックグラウンドにあったため、Nora はブック内で操作できませんでした。",
     ),
     ("Nora|Resume", "再開"),
-    ("Nora|Open Nora", "Nora を開く"),
+    ("Nora|Ask Nora", "Noraに質問"),
+    ("Nora|Nora, the Neoffice assistant", "Nora、Neoffice のアシスタント"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "ブック内では何も実行されませんでした：Nora は時間内にブック内で操作できませんでした。まだ必要であれば、もう一度依頼してください。",
@@ -484,7 +491,8 @@ const CHINESE: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora 未能及时回复。"),
     ("This tab was in the background: Nora could not act in the workbook.", "该标签页处于后台：Nora 无法在工作簿中执行操作。"),
     ("Nora|Resume", "恢复"),
-    ("Nora|Open Nora", "打开 Nora"),
+    ("Nora|Ask Nora", "询问 Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora，Neoffice 助手"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "工作簿中没有做任何更改：Nora 未能及时在其中执行操作。如果仍需要，请再次提出请求。",
@@ -536,7 +544,8 @@ const KOREAN: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora가 제시간에 응답하지 않았습니다."),
     ("This tab was in the background: Nora could not act in the workbook.", "이 탭이 백그라운드에 있어서 Nora가 통합 문서에서 작업할 수 없었습니다."),
     ("Nora|Resume", "다시 시작"),
-    ("Nora|Open Nora", "Nora 열기"),
+    ("Nora|Ask Nora", "Nora에게 문의"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, Neoffice 어시스턴트"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "통합 문서에서 아무 작업도 처리되지 않았습니다: Nora가 제때 통합 문서에서 작업할 수 없었습니다. 여전히 필요하면 다시 요청해 주세요.",
@@ -594,7 +603,8 @@ const SERBIAN: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora nije odgovorila na vreme."),
     ("This tab was in the background: Nora could not act in the workbook.", "Ovaj tab je bio u pozadini: Nora nije mogla da deluje u radnoj svesci."),
     ("Nora|Resume", "Nastavi"),
-    ("Nora|Open Nora", "Otvori Nora"),
+    ("Nora|Ask Nora", "Pitajte Noru"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, asistentkinja Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Ništa nije urađeno u radnoj svesci: Nora nije na vreme mogla da deluje u njoj. Ponovo zatražite ako vam je još potrebno.",
@@ -658,7 +668,8 @@ const GREEK: &[(&str, &str)] = &[
         "Αυτή η καρτέλα ήταν στο παρασκήνιο: η Nora δεν μπόρεσε να ενεργήσει στο βιβλίο εργασίας.",
     ),
     ("Nora|Resume", "Επανάληψη"),
-    ("Nora|Open Nora", "Άνοιγμα της Nora"),
+    ("Nora|Ask Nora", "Ρωτήστε τη Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, η βοηθός του Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Δεν έγινε τίποτα στο βιβλίο εργασίας: η Nora δεν μπόρεσε να ενεργήσει σε αυτό εγκαίρως. Ζητήστε ξανά, αν το χρειάζεστε ακόμη.",
@@ -722,7 +733,8 @@ const TURKISH: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora zamanında yanıt vermedi."),
     ("This tab was in the background: Nora could not act in the workbook.", "Bu sekme arka plandaydı: Nora çalışma kitabında işlem yapamadı."),
     ("Nora|Resume", "Devam et"),
-    ("Nora|Open Nora", "Nora'yı aç"),
+    ("Nora|Ask Nora", "Nora'ya sorun"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, Neoffice asistanı"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Çalışma kitabında hiçbir şey yapılmadı: Nora zamanında çalışma kitabında işlem yapamadı. Hâlâ gerekiyorsa lütfen yeniden isteyin.",
@@ -780,7 +792,8 @@ const POLISH: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora nie odpowiedziała na czas."),
     ("This tab was in the background: Nora could not act in the workbook.", "Ta karta była w tle: Nora nie mogła wykonać działania w skoroszycie."),
     ("Nora|Resume", "Wznów"),
-    ("Nora|Open Nora", "Otwórz Nora"),
+    ("Nora|Ask Nora", "Zapytaj Norę"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, asystentka Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Nic nie zostało zrobione w skoroszycie: Nora nie zdążyła w nim zadziałać. Jeśli nadal jest to potrzebne, zleć to ponownie.",
@@ -844,7 +857,8 @@ const ITALIAN: &[(&str, &str)] = &[
         "Questa scheda era in background: Nora non ha potuto agire nella cartella di lavoro.",
     ),
     ("Nora|Resume", "Riprendi"),
-    ("Nora|Open Nora", "Apri Nora"),
+    ("Nora|Ask Nora", "Chiedi a Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, l'assistente Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Nella cartella di lavoro non è stato fatto nulla: Nora non ha potuto agire in tempo. Riprova se ne hai ancora bisogno.",
@@ -905,7 +919,8 @@ const UKRAINIAN: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora не відповіла вчасно."),
     ("This tab was in the background: Nora could not act in the workbook.", "Ця вкладка була у фоновому режимі: Nora не могла виконати дію в книзі."),
     ("Nora|Resume", "Повторити"),
-    ("Nora|Open Nora", "Відкрити Nora"),
+    ("Nora|Ask Nora", "Запитати Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, асистентка Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "У книзі нічого не було зроблено: Nora не встигла виконати дію в ній вчасно. Повторіть запит, якщо він ще потрібен.",
@@ -957,7 +972,8 @@ const VIETNAMESE: &[(&str, &str)] = &[
     ("Nora did not answer in time.", "Nora không trả lời kịp thời."),
     ("This tab was in the background: Nora could not act in the workbook.", "Thẻ này đang ở chế độ nền: Nora không thể thao tác trong sổ tính."),
     ("Nora|Resume", "Tiếp tục"),
-    ("Nora|Open Nora", "Mở Nora"),
+    ("Nora|Ask Nora", "Hỏi Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, trợ lý của Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Chưa có gì được thực hiện trong sổ tính: Nora không kịp thao tác trong đó. Nếu vẫn cần, bạn hãy yêu cầu lại.",
@@ -1018,7 +1034,8 @@ const DUTCH: &[(&str, &str)] = &[
         "Dit tabblad stond op de achtergrond: Nora kon niet handelen in de werkmap.",
     ),
     ("Nora|Resume", "Hervatten"),
-    ("Nora|Open Nora", "Nora openen"),
+    ("Nora|Ask Nora", "Nora vragen"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, de Neoffice-assistente"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Er is niets gedaan in de werkmap: Nora kon er op tijd niet in handelen. Vraag het opnieuw als u het nog nodig heeft.",
@@ -1085,7 +1102,8 @@ const ROMANIAN: &[(&str, &str)] = &[
         "Această filă era în fundal: Nora nu a putut acționa în registrul de calcul.",
     ),
     ("Nora|Resume", "Reluare"),
-    ("Nora|Open Nora", "Deschide Nora"),
+    ("Nora|Ask Nora", "Întrebați-o pe Nora"),
+    ("Nora|Nora, the Neoffice assistant", "Nora, asistenta Neoffice"),
     (
         "Nothing was done in the workbook: Nora could not act in it in time. Ask again if you still need it.",
         "Nu s-a făcut nimic în registrul de calcul: Nora nu a putut acționa în el la timp. Cereți din nou dacă mai aveți nevoie.",
