@@ -1264,7 +1264,8 @@ mod tests {
     #[test]
     fn the_status_bar_says_its_words_in_french_german_italian_and_spanish() {
         let english: Vec<&str> = STATUS_BAR_FRENCH.iter().map(|(english, _)| *english).collect();
-        let catalogs: [(Language, fn(&str) -> Option<&'static str>); 4] = [
+        type Catalog = fn(&str) -> Option<&'static str>;
+        let catalogs: [(Language, Catalog); 4] = [
             (Language::Fr, super::super::fr::translate),
             (Language::De, super::super::de::translate),
             (Language::It, super::super::it::translate),

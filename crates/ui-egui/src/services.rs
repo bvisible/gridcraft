@@ -59,8 +59,9 @@ pub struct Services {
     pub nora_inbox: Option<NoraInbox>,
     // //// Neoffice — the host opens a page of the person's instance for the pane (a card's Open, a link of a reply): the
     // path only (`/drive/f/…`), already checked by craft-nora (`instance_path`). Without it the pane shows a link as its words.
-    /// Open a page of the person's instance, by its path, the host's own way.
-    pub nora_open: Option<Box<dyn Fn(&str)>>,
+    /// Open a page of the person's instance, by its path, the host's own way. (`OpenUrl` is upstream's alias: clippy's
+    /// `type_complexity`, which upstream turned on at v0.15.0, flags the spelled-out type.)
+    pub nora_open: Option<OpenUrl>,
 }
 
 /// Shared queue of files read asynchronously (browser file picker, drag and drop).

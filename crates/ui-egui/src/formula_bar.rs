@@ -459,6 +459,7 @@ fn editor_shortcuts(
     mine: bool,
     has_focus: bool,
 ) -> EditorKeyOutcome {
+    // //// Neoffice — `save` (see `editor_widget`).
     let mut outcome = EditorKeyOutcome { action: None, arrow: false, cancel: false, save: None };
     // A message or dialog owns Enter and Escape until it closes.
     if !has_focus || !mine || app.message.is_some() || app.dialog.is_some() {

@@ -475,25 +475,32 @@ fn selection_statistic_values(app: &SheetApp) -> Vec<(&'static str, String)> {
         let code = if code == "General" { "#,##0.##########".to_string() } else { code };
         gridcraft_engine::display::format(&gridcraft_engine::core::Value::Number(v), &code, &d.wb).text.trim_end_matches('.').to_string()
     };
+    // //// Neoffice — (English label, value) pairs: see `selection_statistic_values` above.
     let mut parts: Vec<(&'static str, String)> = Vec::new();
     if on.average
         && let Some(a) = st.average
     {
+        // //// Neoffice — a pair, see above.
         parts.push(("Average", fmt(a)));
     }
     if on.count && st.count > 0 {
+        // //// Neoffice — a pair, see above.
         parts.push(("Count", st.count.to_string()));
     }
     if on.numerical_count && st.count > 0 {
+        // //// Neoffice — a pair, see above.
         parts.push(("Numerical Count", st.numeric.to_string()));
     }
     if on.minimum && st.numeric > 0 {
+        // //// Neoffice — a pair, see above.
         parts.push(("Minimum", fmt(st.min)));
     }
     if on.maximum && st.numeric > 0 {
+        // //// Neoffice — a pair, see above.
         parts.push(("Maximum", fmt(st.max)));
     }
     if on.sum && st.numeric > 0 {
+        // //// Neoffice — a pair, see above.
         parts.push(("Sum", fmt(st.sum)));
     }
     parts

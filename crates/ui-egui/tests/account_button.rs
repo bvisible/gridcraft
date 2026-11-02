@@ -105,7 +105,9 @@ fn the_title_bar_ends_with_the_initials_of_the_person_named() {
 fn hovering_the_button_shows_the_name_and_nothing_else() {
     let mut h = harness(Some("Jane Doe"), false);
     let circle = badge(&h, Tokens::light().accent).expect("the badge is painted");
-    assert!(h.query_by_label_contains("Jane Doe").is_none(), "the name is not shown before the pointer comes");
+    // egui 0.37 gives a widget its hover text as its accessible name, so the node may carry the name from the start; what must not
+    // exist before the pointer comes is the tooltip's painted text.
+    assert!(text(&h, "Jane Doe").is_none(), "the name is not shown before the pointer comes");
     h.hover_at(circle.center);
     // Past egui's tooltip delay (half a second).
     h.run_steps(60);
