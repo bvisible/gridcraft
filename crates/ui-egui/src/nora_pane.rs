@@ -242,7 +242,7 @@ pub fn top_button(app: &mut SheetApp, ui: &mut Ui) {
     let open = app.ui.nora_pane;
     ui.add_space(4.0);
     let response = craft_nora_ui::launcher::button(ui, &words, open);
-    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, open, &words.label));
+    response.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, open, &words.label));
     if response.clicked() && app.run("ui.nora", json!({"on": !open})).is_ok() {
         PaneMemory::new(MEMORY).remember(!open);
     }
@@ -558,6 +558,8 @@ fn needs_the_person(request: &UiRequest) -> Option<String> {
         UiRequest::Dialog(name, _) => Some(format!("open the `{name}` dialog to ask for what it was not given")),
         UiRequest::EditCell(_) => Some("start editing the active cell".to_string()),
         UiRequest::OpenUrl(_) => Some("open a link in the browser".to_string()),
+        // //// Neoffice — v0.15's Paste Name: it types a defined name into the cell being edited, or starts that edit, which are the person's.
+        UiRequest::InsertName(_) => Some("type a defined name into the cell being edited".to_string()),
         UiRequest::Message(_) => None,
     }
 }
@@ -774,7 +776,8 @@ fn is_name(wb: &Workbook, text: &str) -> bool {
 /// cells show it.
 fn find_cell(wb: &Workbook, wanted: &str, occurrence: u32, whole: bool) -> Result<(String, CellRef, String), u32> {
     let needle = wanted.to_lowercase();
-    let order = std::iter::once(wb.active_sheet).chain((0..wb.sheets.len()).filter(|si| *si != wb.active_sheet));
+    let active = wb.active_sheet();
+    let order = std::iter::once(active).chain((0..wb.sheets.len()).filter(|si| *si != active));
     let mut seen = 0u32;
     for si in order {
         let Some(sh) = wb.sheet(si).filter(|sh| sh.visibility == Visibility::Visible) else { continue };

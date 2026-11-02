@@ -18,6 +18,8 @@ pub struct Flags {
     /// `?locale=fr-CH`: the locale of the hosting page, whose region chooses the thousands separator of the numbers
     /// shown (`number_locale`); the browser's otherwise.
     pub locale: Option<String>,
+    /// `?chrome=none|notitlebar|nofiletab` (upstream's, since v0.13): the window chrome a host that owns the files leaves undrawn.
+    pub chrome: Option<String>,
 }
 
 impl Flags {
@@ -29,6 +31,7 @@ impl Flags {
             sample: get("sample").map(|name| if name.trim().is_empty() { "sales".to_string() } else { name }),
             nora: get("nora"),
             locale: get("locale"),
+            chrome: get("chrome"),
         }
     }
 
@@ -65,6 +68,11 @@ mod tests {
         assert_eq!(read("?host=parent&locale=fr-CH"), Flags { locale: Some("fr-CH".into()), ..Flags::default() });
         assert_eq!(read("?sample"), Flags { sample: Some("sales".into()), ..Flags::default() });
         assert_eq!(read("?sample=budget&nora"), Flags { sample: Some("budget".into()), nora: Some(String::new()), ..Flags::default() });
+        // //// Neoffice — upstream's `?chrome=` read as a parameter like the others (it called `query_param`, which is not here).
+        assert_eq!(
+            read("?chrome=notitlebar&nora=https://chrome.example"),
+            Flags { chrome: Some("notitlebar".into()), nora: Some("https://chrome.example".into()), ..Flags::default() }
+        );
         assert_eq!(read(""), Flags::default());
     }
 }
