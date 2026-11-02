@@ -340,9 +340,22 @@ pub struct SheetApp {
 }
 
 // //// Neoffice — added: the commands a hosting page that opens the workbooks does not leave to the editor: they bring
-// another workbook in or close the page's. `run` refuses them, and the command search does not list them.
+// another workbook in, close the page's, or (since v0.13 gave every workbook a window of its own) open, hide, switch to or close
+// a window, which leaves the page with more than its one workbook in view, or with none (closing the last window closes the
+// workbook, and an empty editor starts a blank one). `run` refuses them, the command search does not list them, and the View
+// tab draws no button for them.
 pub(crate) fn hidden_from_a_host(id: &str) -> bool {
-    matches!(id, "file.new" | "file.open" | "file.close")
+    matches!(
+        id,
+        "file.new"
+            | "file.open"
+            | "file.close"
+            | "view.newWindow"
+            | "view.arrangeAll"
+            | "view.switchWindows"
+            | "view.hideWindow"
+            | "view.unhideWindow"
+    ) || id.starts_with("window.")
 }
 
 /// Strips the engine's error prefixes for message boxes.

@@ -70,15 +70,20 @@ pub(super) fn view(app: &mut SheetApp, ui: &mut Ui) {
         act(app, "view.zoomToSelection", json!({"viewWidth": r.width(), "viewHeight": r.height()}));
     }
     sep(ui);
-    let __k = big_button(ui, Icon::NewFile, "New\nWindow", "New Window", false);
-    control_keytip(app, ui, &__k, "view.newWindow");
-    if __k.clicked() {
-        act(app, "view.newWindow", json!({}));
-    }
-    let __k = big_button(ui, Icon::Table, "Arrange\nAll", "Arrange All", false);
-    control_keytip(app, ui, &__k, "view.arrangeAll");
-    if __k.clicked() {
-        app.open_dialog("arrangeAll", json!({}));
+    // //// Neoffice — no New Window, Arrange All or Switch Windows when the hosting page opens the workbooks: the page's workbook is
+    // the only one in view, and `run` refuses these commands (hidden_from_a_host).
+    let hosted = app.services.host_owns_documents;
+    if !hosted {
+        let __k = big_button(ui, Icon::NewFile, "New\nWindow", "New Window", false);
+        control_keytip(app, ui, &__k, "view.newWindow");
+        if __k.clicked() {
+            act(app, "view.newWindow", json!({}));
+        }
+        let __k = big_button(ui, Icon::Table, "Arrange\nAll", "Arrange All", false);
+        control_keytip(app, ui, &__k, "view.arrangeAll");
+        if __k.clicked() {
+            app.open_dialog("arrangeAll", json!({}));
+        }
     }
     let fp = big_button(ui, Icon::Freeze, "Freeze\nPanes", "Freeze Panes", true);
     for sequence in
@@ -98,7 +103,10 @@ pub(super) fn view(app: &mut SheetApp, ui: &mut Ui) {
             ],
         );
     });
-    switch_windows(app, ui);
+    // //// Neoffice — see `hosted` above.
+    if !hosted {
+        switch_windows(app, ui);
+    }
     ui.vertical(|ui| {
         let label_response = ui.label(lang.tr("Display theme"));
         let mode = app.ui.theme_mode();

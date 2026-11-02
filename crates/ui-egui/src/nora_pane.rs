@@ -140,6 +140,8 @@ const THE_PERSONS: &[&str] = &[
     "view.animations",
     "view.collapseRibbon",
     "view.formulaBar",
+    // //// Neoffice — v0.15's choice of the statistics the status bar shows: the person's interface, as the formula bar is.
+    "view.statusBar",
     "view.ruler",
     "review.showComments",
     "review.showAllNotes",
@@ -1939,6 +1941,11 @@ mod tests {
             "draw.stroke",
             "review.protectSheet",
             "review.newComment",
+            // //// Neoffice — v0.15's Solver and pivot options work on the page's workbook only (no file, a bounded number of trials).
+            "data.solver",
+            "data.solverReport",
+            "pivot.options",
+            "pivot.showDetails",
         ] {
             assert_eq!(policy.check(allowed), Decision::Allow, "{allowed}");
         }
@@ -1951,6 +1958,8 @@ mod tests {
             "view.animations",
             "view.collapseRibbon",
             "view.formulaBar",
+            // //// Neoffice — v0.15's statistics of the status bar: the person's interface, as the formula bar is.
+            "view.statusBar",
             "app.language.set",
             "file.save",
             "file.open",
@@ -1969,6 +1978,8 @@ mod tests {
             "review.showAllNotes",
             // The windows: a batch would go on in another workbook, and read it.
             "window.activate",
+            "window.close",
+            "window.list",
             "view.newWindow",
             "view.hideWindow",
             "view.unhideWindow",
@@ -1980,7 +1991,18 @@ mod tests {
         // Played directly, without the session's check, a denied command is refused all the same, and so is a family
         // the workbook has no commands in (one a later version adds, or none at all).
         let mut a = app(Services::default());
-        for id in ["automate.runScript", "draw.pen", "window.activate", "ai.summarize", "nothing"] {
+        // //// Neoffice — `macro.` (v0.15's recorder, editor and debugger) is a family of its own that no one has looked at for Nora.
+        for id in [
+            "automate.runScript",
+            "draw.pen",
+            "window.activate",
+            "window.close",
+            "view.statusBar",
+            "macro.run",
+            "macro.save",
+            "ai.summarize",
+            "nothing",
+        ] {
             let error = execute(&mut a, id, json!({"name": "x"})).unwrap_err();
             assert!(error.contains("policy"), "{id}: {error}");
         }

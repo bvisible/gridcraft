@@ -111,6 +111,61 @@ fn the_start_dialog_and_the_command_search_offer_no_other_workbook_to_a_host_tha
     assert_eq!(results[0] - results[1], 3, "exactly New, Open and Close: {results:?}");
 }
 
+/// Since v0.13 every workbook has a window of its own, and the windows' commands reach the workbooks as File › New, Open and
+/// Close do: another window on the page's workbook, the page's workbook hidden or closed (an editor with no workbook starts a
+/// blank one). For a host that opens the workbooks they are refused, not listed, and the View tab draws no button for them.
+#[test]
+fn a_host_that_opens_the_workbooks_leaves_its_workbook_the_only_window() {
+    let windows = [
+        "view.newWindow",
+        "view.arrangeAll",
+        "view.switchWindows",
+        "view.hideWindow",
+        "view.unhideWindow",
+        "window.activate",
+        "window.close",
+        "window.list",
+    ];
+    let mut h = harness(Services { host_owns_documents: true, ..Default::default() });
+    let (documents, shown) = (h.state().session.documents().len(), h.state().session.windows().len());
+    for id in windows {
+        assert!(h.state_mut().run(id, json!({})).is_err(), "{id} is the page's, not the editor's");
+        assert!(h.state_mut().run(id, json!({"window": 1, "force": true})).is_err(), "{id} with parameters");
+    }
+    assert_eq!(
+        (h.state().session.documents().len(), h.state().session.windows().len()),
+        (documents, shown),
+        "still the one workbook, in the one window"
+    );
+    assert!(h.state().session.active().is_some(), "the workbook is open");
+
+    // The View tab has no button for them, and the command search does not find them.
+    h.state_mut().ui.ribbon_tab = "View".into();
+    h.run_steps(3);
+    for label in ["New Window", "Arrange All", "Switch Windows"] {
+        assert!(!has_button(&h, label), "{label} is not offered");
+    }
+    assert!(has_button(&h, "Freeze Panes"), "the rest of the View tab is there");
+    h.state_mut().open_dialog("commandSearch", json!({}));
+    if let Some(d) = h.state_mut().dialog.as_mut() {
+        d.search = "window".into();
+    }
+    h.run_steps(4);
+    for label in ["New Window", "Arrange All", "Switch Windows", "Hide", "Unhide…", "Switch Window", "Close Window", "Windows"] {
+        assert!(!has_button(&h, label), "{label} is not listed");
+    }
+
+    // Without a host the windows are upstream's.
+    let mut h = harness(Services::default());
+    h.state_mut().ui.ribbon_tab = "View".into();
+    h.run_steps(3);
+    for label in ["New Window", "Arrange All", "Switch Windows"] {
+        assert!(has_button(&h, label), "{label} is offered without a host");
+    }
+    h.state_mut().run("view.newWindow", json!({})).unwrap();
+    assert_eq!(h.state().session.windows().len(), shown + 1, "a second window on the same workbook");
+}
+
 const PW: &str = "synthetic-pw-5531";
 
 /// A workbook with 42 in A1, saved as `.xlsx` and encrypted with `PW`.
