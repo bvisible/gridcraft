@@ -10,15 +10,31 @@ At the next upstream merge, `grep -rn "////"` in the source plus this file give 
 picture of what is ours and why.
 
 - **Upstream**: `storytold/gridcraft`, branch `main`.
-- **Base of the divergence**: `ac8da7d49cbeb4be6aa1ad5869f3d29fe2da8cd9`, the tag `v0.11.1`, merged on 2026-10-24
-  (before: `2ebdf16`, the tag `v0.10.0`, merged on 2026-10-22; `version-15` was cut on `fc45b7f`, the tag `v0.6.1`, on
-  2026-10-13). Move it at each upstream merge. The check works it out itself (the common ancestor with
+- **Base of the divergence**: `30b210b4ef03b30616923465efa70766cefba379`, the tag `v0.15.0`, merged on 2026-11-02
+  (before: `ac8da7d`, the tag `v0.11.1`, merged on 2026-10-24; `2ebdf16`, the tag `v0.10.0`, on 2026-10-22; `version-15` was cut
+  on `fc45b7f`, the tag `v0.6.1`, on 2026-10-13). The tag, not upstream's `main`, whose unpublished work (a Python mode,
+  equations) is not ours yet. Move it at each upstream merge. The check works it out itself (the common ancestor with
   upstream's `main`), so this line is for the reader.
 
 ## What the fork adds
 
-Three workflow files and the features below, all marked in place. The workflow files are new files that
-carry their own `//// Neoffice — added file` header.
+Four workflow files and the features below, all marked in place. The workflow files are new files that
+carry their own `//// Neoffice — added file` header. `neoffice-nora-catalogue.yml` (by hand) exports the editor's command list and
+the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue Neoffice's server keeps for Nora.
+
+- **Where our code sits since the v0.15.0 merge**, which split upstream's files into modules (`grep -rn "////"` finds each):
+  `ui-egui/src/lib.rs` (module lines, `UiState::nora_pane`, `SheetApp` fields, `hidden_from_a_host`), `services.rs` (the
+  `Services` fields of the host and of Nora, `NoraInbox`), `app.rs` (constructor, the Nora pane in the layout),
+  `app/commands.rs` (`run`'s guard, `ui.nora`, the dialogs the host does not offer, `open_backstage`), `app/files.rs` (the VBA
+  notice, the inbox's guard, AutoSave), `theme/font_setup.rs` (the browser build's fonts, `has_ui_bold_face`),
+  `ribbon/title_bar.rs`, `ribbon/view.rs`, `dialogs/*.rs`, `backstage/options.rs`, `engine/src/cmd/edit/cell.rs`
+  (typed Swiss numbers), `engine/src/cmd/extra/data.rs` and `extra.rs` (Get Data's `base64`). `selection_statistics` in
+  `tabs.rs` is upstream's English form, kept for upstream's tests; the status bar draws `selection_statistic_values`.
+  `alert` (`app/commands.rs`) and `submit_print` (`app/print.rs`) are `pub(crate)` for `hosted.rs` and `nora_pane.rs`.
+- **The browser build's fonts** (`crates/ui-egui/build.rs`, `web_fonts`; `theme/font_setup.rs`): Carlito for the cells and
+  Inter for the interface, embedded from `CRAFT_FONTS_DIR` (`neoffice-web.yml`), beside upstream's own embedding of the
+  same checkout (BIZ UDPGothic, NanumGothic and the Noto symbol faces, in required mode). The workflow pins craft-fonts at
+  `aced4137`, which has both sets.
 
 - `.github/workflows/neoffice-web.yml`: builds the browser version on a GitHub runner, started by
   hand, with the packaging script upstream's own release job runs. Upstream's workflows are
@@ -77,10 +93,16 @@ carry their own `//// Neoffice — added file` header.
 - **A hosting page opens the workbooks** (`Services::host_owns_documents`, set by `apps/gridcraft-web/src/host.rs`, so
   only when a page frames the editor with `?host=parent`): the editor does not bring another workbook in beside the
   page's, or close it. `file.new`, `file.open` and `file.close` are refused with a message (`run` in
-  `crates/ui-egui/src/lib.rs`), the File menu has no Home, New, Open or Close and a request for those pages shows Info
-  (`backstage.rs`, `open_backstage`), the "More commands" menu has no New or Open (`ribbon.rs`), and a file dropped on
-  the editor is not taken (`apps/gridcraft-web/src/web.rs`); the file the page hands over still opens (the inbox lifts
-  the guard for it). New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
+  `crates/ui-egui/src/app/commands.rs`, the list is `hidden_from_a_host` in `lib.rs`), the File menu has no Home, New,
+  Open or Close and a request for those pages shows Info (`backstage.rs`, `open_backstage`), the "More commands" menu has
+  no New or Open (`ribbon/title_bar.rs`), and a file dropped on the editor is not taken (`apps/gridcraft-web/src/web.rs`);
+  the file the page hands over still opens (the inbox lifts the guard for it). **The windows too, since v0.13** (one window
+  per workbook): `view.newWindow`, `view.arrangeAll`, `view.switchWindows`, `view.hideWindow`, `view.unhideWindow` and every
+  `window.*` command (`activate`, `close`, `list`) are refused the same way, because a second window, a hidden one or a closed
+  last window leaves the page without its workbook in view (an editor with no workbook starts a blank one); the View tab
+  draws no New Window, Arrange All or Switch Windows (`ribbon/view.rs`) and the command search does not list them.
+  Upstream's macros cannot reach the workbooks either way: their policy denies `file.*`, `window.*` and the window commands
+  in a macro step (`engine/src/macros/policy.rs`). New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
   `i18n/neoffice.rs`. Every other build behaves as before.
   Two things still reach a file there, and stay on the page's workbook (new file `crates/ui-egui/src/hosted.rs`, marked lines
   in `lib.rs`: the module, `Services::pick_import_async`, the `host_protected_file` and `imports` fields of `SheetApp`, the
@@ -94,7 +116,7 @@ carry their own `//// Neoffice — added file` header.
     (one string, translated in `i18n/neoffice.rs` by Haiku), and the workbook stays marked as changed. Exports (PDF,
     CSV, web page) still go to the page: they are other files and replace nothing.
   - **AutoSave** (a preference upstream keeps since v0.11, `UiState::autosave`) never saves under a hosting page (one
-    marked condition in `lib.rs`): its direct `file.save` would skip the guards of File › Save; the page's workbooks
+    marked condition in `app/files.rs`): its direct `file.save` would skip the guards of File › Save; the page's workbooks
     have no file path, so it never fired there anyway.
   - **Data › Get Data** (and `data.getData` or `data.fromTextCsv` without a file, which ask for one): the browser's picker
     for a text, CSV or JSON file (`apps/gridcraft-web/src/host.rs`, a picker of its own whose file never reaches the inbox
@@ -104,13 +126,13 @@ carry their own `//// Neoffice — added file` header.
     finds a CSV's (comma, semicolon or tab) unless `delimiter` names it; `text` and `path` keep upstream's comma.
 
 - **A workbook without a styles part opens without a warning** (`crates/xlsx/src/read.rs`, one marked hunk; tests in the
-  new file `crates/xlsx/src/tests/optional_parts.rs`, a marked `mod` line in its `mod.rs`): ECMA-376 makes the part
+  new file `crates/xlsx/src/tests/optional_parts.rs`, a marked `mod` line in its `tests.rs`): ECMA-376 makes the part
   optional and Excel opens such a file silently, but upstream warned "no styles part", which the editor shows in a message
   box at every open (files that a mail or a script writes often have none). A styles part the workbook names and lacks
   still warns. Drop it when upstream stops warning.
 
 - **The account button of the title bar** (new file `crates/ui-egui/src/account.rs`, one marked line in `lib.rs` and
-  one in `ribbon.rs`'s `title_bar`; new test file `crates/ui-egui/tests/account_button.rs`): at the right end of the
+  one in `ribbon/title_bar.rs`; new test file `crates/ui-egui/tests/account_button.rs`): at the right end of the
   title bar, the button WordCraft has there, so the four editors show the person the same way: a round badge in the
   accent colour, a square of the bar's control height, with up to two initials (the first letters of the words of
   `Prefs::user_name`, the name a hosting page passes as `?author=`) and the name, nothing else, as the hover text.
@@ -130,9 +152,12 @@ carry their own `//// Neoffice — added file` header.
   the command list). Without a host connection the pane says that Nora isn't available and offers no text box. With
   one, what Nora asks for in the workbook is played with the engine's commands, the ones the MCP tools run
   (`Session::execute`), once what the person is typing (a cell, a text box) is entered: the commands of the
-  workbook's families only (an allow-list, so `file.`, `app.`, `window.`, `ui.`, `automate.` and any family a later
-  version adds are refused) and none of the person's inside them (the interface's settings, the pen, the eraser and
-  the format painter, the windows, Undo and Redo), nothing that reaches a file or carries a password, nothing that
+  workbook's families only (an allow-list, so `file.`, `app.`, `window.`, `ui.`, `automate.`, `macro.` (v0.15's recorder,
+  editor and debugger) and any family a later version adds are refused) and none of the person's inside them (the
+  interface's settings, `view.statusBar` among them since v0.15, the pen, the eraser and the format painter, the windows,
+  Undo and Redo). The Solver (`data.solver`, `data.solverReport`) is allowed: it works on the page's workbook only, with no
+  file and a bounded number of trials; a request that would type a defined name into the cell being edited
+  (`formulas.pasteName`) needs the person, nothing that reaches a file or carries a password, nothing that
   would open a dialog; a failed action leaves the workbook, its history and its revision as they were, a reading is no
   change (an action that leaves the revision where it was answers `"changed": false`, from which craft-nora 9d28340
   keeps nothing for the Undo either; a batch's results then come in an object, under `results`), and the pane's Undo
@@ -157,8 +182,9 @@ carry their own `//// Neoffice — added file` header.
   `window.gridcraftNora`, and the page's session (its CSRF token, the headers of `window.gridcraftNora`) goes to its
   own origin only. The same rule holds for every editor.
 - **The browser build's URL flags read as URL parameters** (new file `apps/gridcraft-web/src/flags.rs`, marked changes
-  in `apps/gridcraft-web/src/web.rs`): `?webgl`, `?sample` and `?nora` are read by the browser's `URLSearchParams`, as
-  the host bridge reads its own. Upstream looks for the words anywhere in the query, so `?nora=https://sample.example`
+  in `apps/gridcraft-web/src/web.rs`): `?webgl`, `?sample`, `?nora`, `?locale` and (v0.15.0) `?chrome` are read by the
+  browser's `URLSearchParams`, as the host bridge reads its own; upstream's `?chrome=` called its `query_param`, which is not
+  in this web build. Upstream looks for the words anywhere in the query, so `?nora=https://sample.example`
   opened the sales sample. Drop it when upstream reads its flags as parameters.
 
 - **Our product's name in our builds** (new file `crates/ui-egui/src/brand.rs`): `brand::name()` is
@@ -187,14 +213,17 @@ carry their own `//// Neoffice — added file` header.
   number starts editing with the `'` that keeps it text. Every other locale reads an apostrophe as text, and nothing
   computed (`VALUE()`, arithmetic on text) depends on the locale.
 
-- **The status bar in the editor's language** (marked lines in `crates/ui-egui/src/tabs.rs`, `status_bar`; the strings in
+- **The status bar in the editor's language** (marked lines in `crates/ui-egui/src/tabs.rs`, `status_bar` and
+  `selection_statistic_values`; the strings in
   `crates/ui-egui/src/i18n/neoffice.rs`; test file `crates/ui-egui/tests/status_bar_language.rs`): upstream writes Sum, Count and
   Average, the macro and circular-reference notices and the zoom buttons' tooltips in English. They are asked from `Language::tr`,
   with Neoffice's translations in French, German, Italian and Spanish (Haiku; every other language shows upstream's English, and a
   language's own catalog still wins), and the view buttons' tooltips use the ribbon's labels, which the catalogs translate.
   Sum and Average are shown in the number format of the selection's first numeric cell, as Excel shows them (upstream:
   the active cell's, so CHF amounts selected from a General cell or a label read `927.4083333333`); a General one keeps
-  upstream's display (`first_numeric` in `tabs.rs`, marked).
+  upstream's display (`first_numeric` in `tabs.rs`, marked). Since v0.15 the bar shows up to six statistics, chosen in its
+  context menu (`view.statusBar`); the three that upstream added (Numerical Count, Minimum, Maximum) are in English
+  in every language, and so are the menu's labels in the languages whose catalog lacks them.
 
 ## Files that cannot carry a comment
 

@@ -29,6 +29,16 @@ jobs:
       RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # //// Neoffice — 02.11 (v0.15.0 merge): upstream's own gate (craft-common-actions' gate.yml) tests with the craft-fonts it ships
+      # and sets CRAFT_FONTS_REQUIRED=1 so that a build which silently drops them fails. Its tests draw "ẞ" and Vietnamese, which
+      # egui's bundled Ubuntu Light lacks, and panic without the fonts. The same commit as neoffice-web.yml.
+      - name: Check out craft-fonts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: storytold/craft-fonts
+          ref: aced4137c022f1f587624d48e81ec77e1914a9cc
+          path: craft-fonts
+          persist-credentials: false
       - name: Linux build dependencies (winit, wgpu, rfd, audio)
         run: |
           sudo apt-get update
@@ -44,3 +54,6 @@ jobs:
         with:
           key: neoffice-ci
       - run: cargo xtask ci
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+          CRAFT_FONTS_REQUIRED: "1"

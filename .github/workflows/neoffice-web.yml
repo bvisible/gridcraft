@@ -35,13 +35,16 @@ jobs:
       # //// Neoffice — the fonts of the browser build (23.10). Without them it drew every cell in egui's Ubuntu Light,
       # a bold cell like the others, and its interface had no bold face: a wasm build has no font files to read.
       # crates/ui-egui/build.rs embeds Carlito's four faces (metric-compatible with Calibri) for the cells and Inter
-      # Regular and Bold for the interface from this checkout, the commit NeoPrés' web build pins (the first with
-      # craft-fonts' Latin fonts), and packaging/env.sh puts the licences in the zip.
+      # Regular and Bold for the interface from this checkout, and packaging/env.sh puts the licences in the zip.
+      # //// Neoffice — 02.11 (v0.15.0 merge): upstream's own build.rs reads the same CRAFT_FONTS_DIR, and with
+      # CRAFT_FONTS_REQUIRED=1 demands the faces of its manifest (BIZ UDPGothic, NanumGothic, Noto Sans Symbols and
+      # Symbols 2, which the web build embeds); the commit pinned before (43913056) had Carlito and Inter but not those,
+      # so the pin is craft-fonts' main of that day, which has both.
       - name: Check out craft-fonts (Carlito and Inter, the fonts of the browser build)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: storytold/craft-fonts
-          ref: 43913056ce82a3fdad0ef69f6b88d1dc922a8104
+          ref: aced4137c022f1f587624d48e81ec77e1914a9cc
           path: craft-fonts
       - uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
         with:
