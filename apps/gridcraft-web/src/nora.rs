@@ -22,7 +22,9 @@
 //! the page of the same origin that frames it, a promise of `{ status, body }` (`body` is the JSON of the
 //! call): the pane is then on without `?nora`, and every call goes through it. Neodesk does so: it calls
 //! with the person's credential, which neither its page nor the editor ever holds (the same as
-//! WordCraft's `wordcraftNoraCall` and NeoMail's `mailcraftNoraCall`).
+//! WordCraft's `wordcraftNoraCall` and NeoMail's `mailcraftNoraCall`). A host whose call also carries a dictation to the
+//! server (`nora.api.stt.transcribe`: the recording as base64) says so with `window.gridcraftNoraDictation = true`, on the
+//! page or on the page that frames it: the pane then offers its microphone (`host_flag`).
 //!
 //! What decides things (which origin, which headers) is plain Rust at the top of this file, tested off
 //! wasm; the part that talks to the browser is the module `wire`, below it.
@@ -176,6 +178,20 @@ mod wire {
         windows.into_iter().find_map(|w| get(&w, name).filter(JsValue::is_function).map(|f| (w, js_sys::Function::from(f))))
     }
 
+    /// Whether the page, or the page of the same origin that frames it, sets `name` to `true`.
+    fn host_flag(name: &str) -> bool {
+        let Some(window) = web_sys::window() else { return false };
+        let own = JsValue::from(window.clone());
+        let mut windows = vec![own.clone()];
+        if let Ok(Some(parent)) = window.parent() {
+            let parent = JsValue::from(parent);
+            if parent != own && get(&parent, "document").is_some() {
+                windows.push(parent);
+            }
+        }
+        windows.iter().any(|w| get(w, name).and_then(|value| value.as_bool()) == Some(true))
+    }
+
     /// One call made by the host: its answer read as a `fetch`'s (status 0 when it gave none).
     async fn call_host(owner: &JsValue, function: &js_sys::Function, request: &HttpRequest) -> Result<(u16, String), String> {
         let promise = function.call2(owner, &JsValue::from_str(&request.path), &JsValue::from_str(&request.body.to_string())).map_err(reason)?;
@@ -198,6 +214,11 @@ mod wire {
                 }
             }));
         }
+        // //// Neoffice — the host that carries a dictation to the server (`gridcraftNoraCall` with `nora.api.stt.transcribe`:
+        // the recording as base64, the host makes the form with the person's credentials) says so with
+        // `window.gridcraftNoraDictation = true`, on the page or the page that frames the editor; the pane then offers its
+        // microphone, where the browser can record. An older host never sets it: no microphone that would send nowhere.
+        services.nora_dictation = host_flag("gridcraftNoraDictation");
         let inbox: NoraInbox = Arc::new(Mutex::new(Vec::new()));
         services.nora_inbox = Some(inbox.clone());
         services.nora_http = Some(Box::new(move |request: HttpRequest| {

@@ -269,8 +269,9 @@ fn web_font(role: &str) -> Option<FontData> {
 }
 
 // //// Neoffice — whether the interface's bold family has a bold face of its own (a system one, or the browser build's
-// //// embedded Inter Bold), set by each font_definitions_impl. Without one it draws the regular face, and Nora's pane
-// //// then draws its bold words twice instead (nora_pane::style).
+// //// embedded Inter Bold), set by each font_definitions_impl. Without one it draws the regular face. Nora's pane read it
+// //// to draw its bold words twice instead (`nora_pane::style`); the pane of craft-nora-ui 7bc770d has its own faces and no
+// //// longer asks, so nothing reads it for now.
 static UI_BOLD_FACE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 // //// Neoffice — see UI_BOLD_FACE.

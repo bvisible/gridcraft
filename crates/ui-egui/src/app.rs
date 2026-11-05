@@ -110,6 +110,9 @@ impl SheetApp {
 
     /// Per-frame logic (control channel, screenshots). Call before `ui`.
     pub fn logic(&mut self, ctx: &egui::Context) {
+        // //// Neoffice — Nora goes on reading her actions when the window is hidden (no frame is drawn then, the pane's own
+        // pump never runs): see `nora_pane::pump_hidden`.
+        crate::nora_pane::pump_hidden(self, ctx);
         self.ensure_text_width(ctx);
         // A keytip control request lives one frame: the ribbon consumes it during `ui`, and
         // anything that never reached a control (collapsed ribbon, tab switch) is dropped.

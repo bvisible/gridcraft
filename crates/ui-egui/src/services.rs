@@ -62,6 +62,9 @@ pub struct Services {
     /// Open a page of the person's instance, by its path, the host's own way. (`OpenUrl` is upstream's alias: clippy's
     /// `type_complexity`, which upstream turned on at v0.15.0, flags the spelled-out type.)
     pub nora_open: Option<OpenUrl>,
+    // //// Neoffice — the host carries a dictation to the server (`nora.api.stt.transcribe`, with the person's credentials):
+    // the pane then offers its microphone, where the browser can record. Off for every other build.
+    pub nora_dictation: bool,
 }
 
 /// Shared queue of files read asynchronously (browser file picker, drag and drop).

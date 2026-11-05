@@ -181,6 +181,18 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   the instance's Nora, and the console says why); any other origin only the hosting page sets, in
   `window.gridcraftNora`, and the page's session (its CSRF token, the headers of `window.gridcraftNora`) goes to its
   own origin only. The same rule holds for every editor.
+- **The Nora pane redone, 2026-11-05** (`craft-nora-ui` at `7bc770d`: the Neoffice design system's look, Nora's sphere, what she is
+  doing in words, and a microphone). The panel now draws its own canvas, head and close button, so `nora_pane::pane`
+  (`crates/ui-egui/src/nora_pane.rs`, our file) gives it a frame with no fill and no margin, only a line, drops the old title row
+  and reads the panel's close request; the editor's colours are no longer passed (`style` is gone, and with it the only reader of
+  `theme::has_ui_bold_face`, `crates/ui-egui/src/theme/font_setup.rs`, kept for now). Dictation is offered only where the host says it
+  carries a recording to the server: `Services::nora_dictation` (`crates/ui-egui/src/services.rs`), set from
+  `window.gridcraftNoraDictation` on the page or the page that frames the editor (`apps/gridcraft-web/src/nora.rs`, `host_flag`); the
+  session is told the interface language for it. While the window is hidden eframe runs no frame, only `logic`:
+  `SheetApp::logic` (`crates/ui-egui/src/app.rs`) calls `nora_pane::pump_hidden`, so that Nora's queue is read and her actions played
+  (`drive` reads the page's clock). New strings in every table of `crates/ui-egui/src/i18n/neoffice.rs` (French from Neoffice,
+  the others by Haiku), among them `Nora|Cancel` for the microphone's Cancel: upstream's catalogs have no entry for the bare
+  word in French and most other languages.
 - **The browser build's URL flags read as URL parameters** (new file `apps/gridcraft-web/src/flags.rs`, marked changes
   in `apps/gridcraft-web/src/web.rs`): `?webgl`, `?sample`, `?nora`, `?locale` and (v0.15.0) `?chrome` are read by the
   browser's `URLSearchParams`, as the host bridge reads its own; upstream's `?chrome=` called its `query_param`, which is not
