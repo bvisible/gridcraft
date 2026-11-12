@@ -23,6 +23,11 @@ Four workflow files and the features below, all marked in place. The workflow fi
 carry their own `//// Neoffice — added file` header. `neoffice-nora-catalogue.yml` (by hand) exports the editor's command list and
 the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue Neoffice's server keeps for Nora.
 
+- **What the v0.19.1 merge added to that map**: `i18n.rs`'s `tr` asks upstream's new `translated` (the catalogs' own lookup, which its
+  tests call) and then our tables; `theme.rs`'s export list carries `has_ui_bold_face`; `backstage/options.rs`,
+  `dialogs/command_search.rs`, `formula_bar.rs` (`to_python` and `save` both), `engine/src/cmd/extra/data.rs` (the cell limit and
+  our `base64` separator) and `numfmt/src/render.rs` took their conflicts with both sides kept. The new files are
+  `apps/gridcraft-web/src/api_policy.rs`, `crates/engine/tests/stored_window_commands.rs` and, in `host_documents.rs`, two tests.
 - **Where our code sits since the v0.15.0 merge**, which split upstream's files into modules (`grep -rn "////"` finds each):
   `ui-egui/src/lib.rs` (module lines, `UiState::nora_pane`, `SheetApp` fields, `hidden_from_a_host`), `services.rs` (the
   `Services` fields of the host and of Nora, `NoraInbox`), `app.rs` (constructor, the Nora pane in the layout),
@@ -41,6 +46,8 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   with the `math*` families, which in the browser build have no system maths font to load: they fall back to egui's bundled
   faces and Hack (a glyph no face has shows as a `[?]` box).
 
+- Upstream's `house-rules.yml` (v0.19.0, a shared craft-common-actions workflow on its AGENTS.md and CLAUDE.md) is disabled
+  through the API like the others.
 - `.github/workflows/neoffice-web.yml`: builds the browser version on a GitHub runner, started by
   hand, with the packaging script upstream's own release job runs. Upstream's workflows are
   disabled on this fork, because they need upstream's signing secrets (each new one is disabled through the API right
@@ -275,4 +282,4 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
 
 | File | Why it is ours |
 |---|---|
-| `Cargo.lock` | Lists `craft-nora` and `craft-nora-ui` (git, from Neoffice's `craft-libs` fork) for the Nora pane. On a merge conflict, take upstream's file and run `cargo metadata`: cargo writes our two entries back. |
+| `Cargo.lock` | Lists `craft-nora` and `craft-nora-ui` (git, from Neoffice's `craft-libs` fork) for the Nora pane, and has no `craft-web-host` (see the host bridge above). On a merge conflict, take upstream's file and run `cargo metadata`: cargo writes our two entries back and drops that crate. |
