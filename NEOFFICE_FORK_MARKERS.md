@@ -27,7 +27,8 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   tests call) and then our tables; `theme.rs`'s export list carries `has_ui_bold_face`; `backstage/options.rs`,
   `dialogs/command_search.rs`, `formula_bar.rs` (`to_python` and `save` both), `engine/src/cmd/extra/data.rs` (the cell limit and
   our `base64` separator) and `numfmt/src/render.rs` took their conflicts with both sides kept. The new files are
-  `apps/gridcraft-web/src/api_policy.rs`, `crates/engine/tests/stored_window_commands.rs` and, in `host_documents.rs`, two tests.
+  `apps/gridcraft-web/src/api_policy.rs`, `crates/engine/tests/stored_window_commands.rs` and, in `host_documents.rs`, two tests;
+  `crates/math/src/lib.rs` has a marked hunk (the negation slash).
 - **Where our code sits since the v0.15.0 merge**, which split upstream's files into modules (`grep -rn "////"` finds each):
   `ui-egui/src/lib.rs` (module lines, `UiState::nora_pane`, `SheetApp` fields, `hidden_from_a_host`), `services.rs` (the
   `Services` fields of the host and of Nora, `NoraInbox`), `app.rs` (constructor, the Nora pane in the layout),
@@ -44,7 +45,15 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   since then, and that revision no longer holds Carlito or Inter** (the Latin sets left craft-fonts' tree): do not follow it
   while `web_fonts` reads `carlito/` and `inter/`; `aced4137`'s manifest has every face upstream requires. Equations are drawn
   with the `math*` families, which in the browser build have no system maths font to load: they fall back to egui's bundled
-  faces and Hack (a glyph no face has shows as a `[?]` box).
+  faces and Hack (a glyph no face has shows as a `[?]` box). Seen at the v0.19.1 merge, in the browser: ∈ ∪ ∀ ≈ ≥ ∂ ≤ ∑ ∫ √ ∞
+  α π ± × are drawn; `\neq`, `\not=` and `\ne` drew a box over the equals sign (see the equations bullet below), and any other
+  glyph egui's faces lack stays a box (Carlito and Inter lack ∈ ∪ ∀ ∃ ∇ ⊂ ∘ ⟨ ℝ too; not checked one by one).
+- **Equations: the negation slash** (`crates/math/src/lib.rs`, `glyph`, marked, with a test): RaTeX lays a negated relation out as the
+  relation and KaTeX's negation slash, the private-use code point U+E020 of its Main font, with no width. No font a painter has holds
+  it (the desktop's system maths fonts either: upstream draws a box there too; adding the interface or the cell face to the
+  equation chains was tried and drew those fonts' own private-use glyph instead). `glyph` draws an ordinary `/` 0.14 em in, as RaTeX
+  composes `\notin`. Other negations RaTeX makes of one glyph of KaTeX's AMS font (`\nleq`, `\nless`…: private-use codes of its own)
+  are not handled.
 
 - Upstream's `house-rules.yml` (v0.19.0, a shared craft-common-actions workflow on its AGENTS.md and CLAUDE.md) is disabled
   through the API like the others.
@@ -175,6 +184,13 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   GridCraft's theme has no colour for text on the accent: the initials are white on the light theme's green and
   the title bar's grey on the dark theme's light green (white would read at about 2:1 there). No new text.
 
+- **Nora and the 21 commands v0.19.1 added** (the pane's export, `gridcraft-cli commands --json` and `allowed`: 364 commands before, 385 now,
+  58 refused): refused because their family is not on the list: `control.assign`, `control.format`, `control.list`, `control.press`,
+  `control.setValue` (form controls: a button runs a command), `equation.edit`, `python.set`, `python.output` (Python cells: the code is
+  stored, nothing runs). Played: `data.solverLoadModel`, `data.solverReset`, `data.solverSaveModel`, `formulas.traceError`,
+  `insert.button`, `insert.equation`, `insert.slider`, `insert.spinButton`, `range.move`, `selection.nextCorner`,
+  `view.showHorizontalScrollBar`, `view.showVerticalScrollBar`, `view.showSheetTabs` (display options saved with the workbook).
+  A button Nora inserts runs its command through the macro policy, which refuses the file, window and automation families.
 - **The Nora assistant pane** (Neoffice's assistant, in a pane at the right of the window, the one WordCraft has, so
   the same Nora works in every editor), off until File › Options › Assistant or the `ui.nora` command turns it on; the
   browser build turns it on by itself when the page offers Nora. It is built on `craft-nora` (the conversation with

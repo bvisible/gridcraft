@@ -505,6 +505,12 @@ fn glyph(x: f32, y: f32, size: f32, font: &str, code: u32, color: Option<[u8; 3]
         _ => Face::Roman,
     };
     let raw = char::from_u32(code).unwrap_or('\u{FFFD}');
+    // //// Neoffice — RaTeX lays a negated relation out (`\neq`, `\not=`) as the relation and KaTeX's own negation slash, the private-use
+    // glyph U+E020 of its Main font, with no width, at the relation's left edge. No font a painter has holds that code point (egui's
+    // bundled faces and the system maths fonts alike: a box was drawn over every `\neq`), and a stray face's own glyph at that code
+    // is worse. The slash is drawn instead, as RaTeX itself composes `\notin` (an `∈` and a `/` a little to its right): a
+    // relation is about 0.8 em wide and the slash 0.5 em, so it sits 0.14 em in. Drop it when upstream draws the negation itself.
+    let x = if (fid, raw) == (FontId::MainRegular, '\u{E020}') { x + 0.14 * size } else { x };
     // Blackboard, script and Fraktur letters sit at ASCII slots in TeX's fonts; draw the Unicode
     // letter, with the ASCII one as the fallback.
     let (ch, alt) = match (fid, raw) {
@@ -513,6 +519,8 @@ fn glyph(x: f32, y: f32, size: f32, font: &str, code: u32, color: Option<[u8; 3]
         (FontId::FrakturRegular, c @ ('A'..='Z' | 'a'..='z')) => (styled(c, Style::Fraktur), Some(c)),
         (FontId::FrakturBold, c @ ('A'..='Z' | 'a'..='z')) => (styled(c, Style::BoldFraktur), Some(c)),
         (_, c) if (0x1D400..=0x1D7FF).contains(&code) => (c, Some(ratex_font::katex_ttf_glyph_char(fid, code))),
+        // //// Neoffice — see the slash above.
+        (FontId::MainRegular, '\u{E020}') => ('/', None),
         (_, c) => (c, None),
     };
     let m = ratex_font::font_and_metric_for_mathematical_alphanumeric(code)
@@ -583,6 +591,19 @@ mod tests {
 
     fn glyphs(l: &MathList) -> String {
         l.items.iter().filter_map(|i| if let Item::Glyph(g) = i { Some(g.ch) } else { None }).collect()
+    }
+
+    // //// Neoffice — a negated relation draws its slash with a glyph every font has, not KaTeX's private-use U+E020.
+    #[test]
+    fn a_negated_relation_has_a_slash_every_font_draws() {
+        for src in ["a \\neq b", "a \\not= b", "a \\ne b"] {
+            let l = layout(src).unwrap();
+            let all = glyphs(&l);
+            assert_eq!(all, "a/=b", "{src}");
+            assert!(!all.chars().any(|c| ('\u{E000}'..='\u{F8FF}').contains(&c)), "{src}: no private-use code point");
+            let at = |c: char| l.items.iter().find_map(|i| if let Item::Glyph(g) = i { (g.ch == c).then_some(g.x) } else { None }).unwrap();
+            assert!(at('/') > at('=') && at('/') < at('=') + 0.5, "{src}: the slash crosses the equals sign");
+        }
     }
 
     #[test]
