@@ -617,6 +617,14 @@ fn build_role_chain(
     {
         chain.push(hack.to_string());
     }
+    // //// Neoffice — the equation families end with the interface face and the cell face. A browser build has no system maths font
+    // to lead them, and egui's bundled faces lack the combining slash U+0338 that RaTeX lays every negated relation out with (`\neq`
+    // is `=` and that slash): an equation drew a box over each one. Inter has it, and Carlito has the symbols Inter lacks (≡, ∩).
+    // They come after every other face, so only a glyph nothing else draws reaches them. Drop it when upstream ships a maths font.
+    if role.starts_with("math") {
+        chain.push(format!("sys-{UI}"));
+        chain.push(format!("sys-{CELL}"));
+    }
     chain.extend(fallback.iter().cloned());
     chain.retain(|k| fonts.font_data.contains_key(k));
     chain
@@ -716,5 +724,38 @@ mod font_binding_tests {
             let FontFamily::Name(fam) = cell_family(&name, seed % 2 == 0, seed % 3 == 0) else { continue };
             assert!(crate::fonts::is_bound(&fam), "{name:?} → unbound {fam:?}");
         }
+    }
+}
+
+// //// Neoffice — the equation families' last faces (`build_role_chain`): the interface face and the cell face, before the script
+// fallbacks. Without them a browser build drew a box over every `\neq` (U+0338, which only Inter has).
+#[cfg(test)]
+mod equation_chain_tests {
+    use super::*;
+
+    fn dummy() -> Arc<FontData> {
+        Arc::new(FontData::from_static(&[]))
+    }
+
+    #[test]
+    fn the_equation_families_end_with_the_interface_and_cell_faces_before_the_script_fallbacks() {
+        let mut fonts = FontDefinitions::default();
+        for key in ["sys-ui", "sys-cell", "script-fallback"] {
+            fonts.font_data.insert(key.into(), dummy());
+        }
+        let base: Vec<String> = fonts.families.get(&FontFamily::Proportional).cloned().unwrap_or_default();
+        let fallback = vec!["script-fallback".to_string()];
+        for role in [MATH, MATH_ITALIC, MATH_BOLD] {
+            let chain = build_role_chain(&mut fonts, role, &base, &[], &fallback, None, false);
+            let tail: Vec<&str> = chain.iter().rev().take(3).rev().map(String::as_str).collect();
+            assert_eq!(tail, ["sys-ui", "sys-cell", "script-fallback"], "{role}: {chain:?}");
+            for key in &base {
+                let (at, ui) = (chain.iter().position(|k| k == key), chain.iter().position(|k| k == "sys-ui"));
+                assert!(at < ui, "{role}: egui's own {key} still comes first, so a glyph it draws keeps its look");
+            }
+        }
+        // The other families are as upstream has them.
+        let chain = build_role_chain(&mut fonts, SERIF, &base, &[], &fallback, None, false);
+        assert!(!chain.iter().any(|k| k == "sys-ui" || k == "sys-cell"), "{chain:?}");
     }
 }

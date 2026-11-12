@@ -43,8 +43,13 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   The workflows pin craft-fonts at `aced4137`, which has both sets. **Upstream's own gate pins `b076417` (Devanagari for Hindi)
   since then, and that revision no longer holds Carlito or Inter** (the Latin sets left craft-fonts' tree): do not follow it
   while `web_fonts` reads `carlito/` and `inter/`; `aced4137`'s manifest has every face upstream requires. Equations are drawn
-  with the `math*` families, which in the browser build have no system maths font to load: they fall back to egui's bundled
-  faces and Hack (a glyph no face has shows as a `[?]` box).
+  with the `math*` families, which in the browser build have no system maths font to load: they fell back to egui's bundled
+  faces and Hack, and a glyph no face had showed as a box. RaTeX lays every negated relation out as the relation and the
+  combining slash U+0338 (`\neq` is `=` and that slash), which none of them has: a box over each one, seen at the v0.19.1 merge.
+  `build_role_chain` (`theme/font_setup.rs`, marked, with a test) now ends the `math*` chains with the interface face (Inter, which
+  has U+0338) and the cell face (Carlito, which has ≡ and ∩), before the script fallbacks, so egui's own faces still draw what they
+  draw. Seen drawn in the browser (from Hack): ∈ ∪ ∀ ≈ ≥ ∂. Carlito and Inter lack ∈ ∪ ∀ ∃ ∇ ⊂ ∘ ⟨ ℝ, so a glyph of those that Hack lacks too
+  stays a box (not checked one by one).
 
 - Upstream's `house-rules.yml` (v0.19.0, a shared craft-common-actions workflow on its AGENTS.md and CLAUDE.md) is disabled
   through the API like the others.
@@ -175,6 +180,13 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   GridCraft's theme has no colour for text on the accent: the initials are white on the light theme's green and
   the title bar's grey on the dark theme's light green (white would read at about 2:1 there). No new text.
 
+- **Nora and the 21 commands v0.19.1 added** (the pane's export, `gridcraft-cli commands --json` and `allowed`, 364 commands before, 385 now,
+  58 refused): refused because their family is not on the list: `control.assign`, `control.format`, `control.list`, `control.press`,
+  `control.setValue` (form controls: a button runs a command), `equation.edit`, `python.set`, `python.output` (Python cells: the code is
+  stored, nothing runs). Played: `data.solverLoadModel`, `data.solverReset`, `data.solverSaveModel`, `formulas.traceError`,
+  `insert.button`, `insert.equation`, `insert.slider`, `insert.spinButton`, `range.move`, `selection.nextCorner`,
+  `view.showHorizontalScrollBar`, `view.showVerticalScrollBar`, `view.showSheetTabs` (display options saved with the workbook).
+  A button Nora inserts runs its command through the macro policy, which refuses the file, window and automation families.
 - **The Nora assistant pane** (Neoffice's assistant, in a pane at the right of the window, the one WordCraft has, so
   the same Nora works in every editor), off until File › Options › Assistant or the `ui.nora` command turns it on; the
   browser build turns it on by itself when the page offers Nora. It is built on `craft-nora` (the conversation with
