@@ -196,7 +196,20 @@ impl Language {
     /// A label that needs two translations (Home's text "Orientation" vs Page Layout's print
     /// "Orientation") is keyed `context|label`: English shows only the part after the `|`.
     pub fn tr(self, text: &str) -> &str {
-        let translated = match self {
+        // //// Neoffice — upstream's one line here is `self.translated(text).unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`
+        // (v0.19.0 split the catalog lookup out into `translated`, which its tests call: it stays the catalog's own). Ours adds three
+        // things to it, as the lines below say.
+        // //// Neoffice — the strings we added (the Nora pane, the hosting page's messages) in every language, asked after its catalog (neoffice.rs).
+        let translated = self.translated(text).or_else(|| neoffice::added(self, text));
+        // //// Neoffice — a `context|label` key shows its label alone when it is translated too, not only when it falls back to English: our table of corrections of v0.6.1's French (`neoffice.rs`, dropped at the v0.10.0 merge, whose `fr.rs` has the same labels) wrote three with their context, and File › Options read "Options|Général"; kept so that no catalog value can show a context again. Upstream: `translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`.
+        let shown = translated.unwrap_or(text);
+        // //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise (brand.rs).
+        crate::brand::rebrand(if text.contains('|') { shown.rsplit_once('|').map_or(shown, |(_, label)| label) } else { shown })
+    }
+
+    /// The catalog's own translation of `text`, or `None` when it falls back to English.
+    fn translated(self, text: &str) -> Option<&'static str> {
+        match self {
             Self::En => None,
             Self::Es => es::translate(text),
             Self::El => el::translate(text),
@@ -216,13 +229,7 @@ impl Language {
             Self::Vi => vi::translate(text),
             Self::Nl => nl::translate(text),
             Self::Ro => ro::translate(text),
-        };
-        // //// Neoffice — the strings we added (the Nora pane, the hosting page's messages) in every language, asked after its catalog (neoffice.rs).
-        let translated = translated.or_else(|| neoffice::added(self, text));
-        // //// Neoffice — a `context|label` key shows its label alone when it is translated too, not only when it falls back to English: our table of corrections of v0.6.1's French (`neoffice.rs`, dropped at the v0.10.0 merge, whose `fr.rs` has the same labels) wrote three with their context, and File › Options read "Options|Général"; kept so that no catalog value can show a context again. Upstream: `translated.unwrap_or_else(|| text.rsplit_once('|').map_or(text, |(_, label)| label))`.
-        let shown = translated.unwrap_or(text);
-        // //// Neoffice — our builds show our product's name (NEOFFICE_PRODUCT_NAME), upstream's otherwise (brand.rs).
-        crate::brand::rebrand(if text.contains('|') { shown.rsplit_once('|').map_or(shown, |(_, label)| label) } else { shown })
+        }
     }
 
     pub(crate) fn tr_error(self, message: &str) -> String {
@@ -327,6 +334,31 @@ fn name_sort_key(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every shipped catalog names GridCraft's own Diagram and Decorative Text features, and
+    /// Diagram never repeats that catalog's chart word (both sit on the Insert tab).
+    #[test]
+    fn every_catalog_has_distinct_diagram_and_decorative_text() {
+        for language in Language::ALL.into_iter().filter(|l| *l != Language::En) {
+            let code = language.code();
+            let diagram = language.translated("Diagram");
+            assert!(diagram.is_some(), "{code}: Diagram");
+            assert!(language.translated("Decorative Text").is_some(), "{code}: Decorative Text");
+            for chart in ["Chart", "Charts"] {
+                if let Some(chart_text) = language.translated(chart) {
+                    assert_ne!(diagram, Some(chart_text), "{code}: Diagram equals {chart}");
+                }
+            }
+        }
+    }
+
+    /// Ukrainian Chart uses the shared craft-i18n term, which is not the Diagram word.
+    #[test]
+    fn ukrainian_chart_uses_the_shared_term() {
+        assert_eq!(Language::Uk.translated("Chart"), Some("Діаграма"));
+        assert_eq!(Language::Uk.translated("Insert Chart"), Some("Вставити діаграму"));
+        assert_eq!(Language::Uk.translated("Diagram"), Some("Схема"));
+    }
 
     /// Help tables are sorted and unique: lookups binary-search them.
     #[test]

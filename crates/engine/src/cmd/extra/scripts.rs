@@ -66,7 +66,11 @@ fn denied_script_step(id: &str, params: &Json) -> Option<String> {
     }
     // Scripts are scoped to their workbook: a step that switches the active window would
     // point every later step at another open document, so those are refused too.
-    if id.starts_with("window.") || matches!(id, "view.switchWindows" | "view.newWindow" | "view.hideWindow" | "view.unhideWindow") {
+    // //// Neoffice — `view.arrangeAll` too (the macro policy's list, policy.rs, now has it): an editor whose page keeps its one
+    // workbook in view lets no stored step rearrange the windows.
+    if id.starts_with("window.")
+        || matches!(id, "view.switchWindows" | "view.newWindow" | "view.hideWindow" | "view.unhideWindow" | "view.arrangeAll")
+    {
         return Some(format!("scripts can't run `{id}`: it reaches outside the workbook"));
     }
     if params.get("path").is_some() {
@@ -138,7 +142,7 @@ pub(super) fn run_script(s: &mut Session, p: &Json) -> Result<Json> {
             let opened_dialog = s.ui_requests.get(before..).is_some_and(|new| new.iter().any(|r| matches!(r, crate::UiRequest::Dialog(..))));
             let changed = wb_before.as_ref().is_some_and(|(uid, wb)| s.docs.iter().any(|d| d.uid == *uid && !std::sync::Arc::ptr_eq(&d.wb, wb)));
             if !opened_dialog || changed {
-                ran_steps.push((id.to_string(), crate::record::with_toggle_state(st["params"].clone(), &result)));
+                ran_steps.push((id.to_string(), crate::record::with_toggle_state(id, st["params"].clone(), &result)));
             }
         }
     }

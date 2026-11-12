@@ -10,11 +10,12 @@ At the next upstream merge, `grep -rn "////"` in the source plus this file give 
 picture of what is ours and why.
 
 - **Upstream**: `storytold/gridcraft`, branch `main`.
-- **Base of the divergence**: `30b210b4ef03b30616923465efa70766cefba379`, the tag `v0.15.0`, merged on 2026-11-02
-  (before: `ac8da7d`, the tag `v0.11.1`, merged on 2026-10-24; `2ebdf16`, the tag `v0.10.0`, on 2026-10-22; `version-15` was cut
-  on `fc45b7f`, the tag `v0.6.1`, on 2026-10-13). The tag, not upstream's `main`, whose unpublished work (a Python mode,
-  equations) is not ours yet. Move it at each upstream merge. The check works it out itself (the common ancestor with
-  upstream's `main`), so this line is for the reader.
+- **Base of the divergence**: `476448d7d9f3a5f8e93fcf7d98b47fd52293fe7f`, the tag `v0.19.1`, merged on 2026-11-12
+  (before: `30b210b4`, the tag `v0.15.0`, merged on 2026-11-02; `ac8da7d`, the tag `v0.11.1`, on 2026-10-24; `2ebdf16`, the tag
+  `v0.10.0`, on 2026-10-22; `version-15` was cut on `fc45b7f`, the tag `v0.6.1`, on 2026-10-13). v0.19.1 only repairs the Flatpak
+  packaging of v0.19.0 (`b7cb2c97`), which is the real version. The tag, not upstream's `main`, whose unpublished work (the
+  shared craft-libs crates for XLS, OPC, CSV and encryption) is not ours yet. Move it at each upstream merge. The check works it out
+  itself (the common ancestor with upstream's `main`), so this line is for the reader.
 
 ## What the fork adds
 
@@ -33,8 +34,12 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   `alert` (`app/commands.rs`) and `submit_print` (`app/print.rs`) are `pub(crate)` for `hosted.rs` and `nora_pane.rs`.
 - **The browser build's fonts** (`crates/ui-egui/build.rs`, `web_fonts`; `theme/font_setup.rs`): Carlito for the cells and
   Inter for the interface, embedded from `CRAFT_FONTS_DIR` (`neoffice-web.yml`), beside upstream's own embedding of the
-  same checkout (BIZ UDPGothic, NanumGothic and the Noto symbol faces, in required mode). The workflow pins craft-fonts at
-  `aced4137`, which has both sets.
+  same checkout (BIZ UDPGothic, NanumGothic and the Noto symbol faces, and since v0.19.0 Noto Sans Arabic, in required mode).
+  The workflows pin craft-fonts at `aced4137`, which has both sets. **Upstream's own gate pins `b076417` (Devanagari for Hindi)
+  since then, and that revision no longer holds Carlito or Inter** (the Latin sets left craft-fonts' tree): do not follow it
+  while `web_fonts` reads `carlito/` and `inter/`; `aced4137`'s manifest has every face upstream requires. Equations are drawn
+  with the `math*` families, which in the browser build have no system maths font to load: they fall back to egui's bundled
+  faces and Hack (a glyph no face has shows as a `[?]` box).
 
 - `.github/workflows/neoffice-web.yml`: builds the browser version on a GitHub runner, started by
   hand, with the packaging script upstream's own release job runs. Upstream's workflows are
@@ -68,6 +73,22 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   the stored Recent list, and the Nora pane is open exactly when the page offers Nora. At a later merge, read upstream's changes to its file
   (`git diff <old base> <new tag> -- apps/gridcraft-web/src/host.rs`) and carry them over by hand; in `web.rs`,
   `main.rs` and `Cargo.toml` keep our calls (`Bridge::requested`, `connect`, `ready`, `sync(app, ctx)`).
+  **Since v0.19.0 upstream's bridge is the `craft-web-host` crate's** (storytold/craft-libs): the same messages, a second transport
+  (`data-host="page"` on the canvas, DOM `CustomEvent`s, no iframe), `apps/gridcraft-web/src/hostmode.rs` for the name of a
+  nameless open, and a 512 MiB limit on a file the page sends. We keep ours, whole: it has what the crate's does not
+  (`gridcraft:saved`, a refused save never looks saved, the file's id, the same-origin check, no write in clear), so the merge
+  deleted `hostmode.rs` (the rule it held is in our `wire::listen`: a nameless open is `Book.xlsx`) and `craft-web-host` is not a
+  dependency of `apps/gridcraft-web/Cargo.toml` (a marked comment there). A page that sets `data-host="page"` on the canvas gets
+  the plain editor with downloads, as a page with no `?host=parent` does. Carry upstream's changes over by hand only when they
+  change a rule (the open limit is not one for our same-origin parent; add it if the page ever sends a file it did not make).
+- **No page command API where a page hosts the editor** (new file `apps/gridcraft-web/src/api_policy.rs`; marked lines in
+  `apps/gridcraft-web/src/web.rs` and `main.rs`; tests in the file itself and in the browser): since v0.18.0 upstream puts
+  `window.gridcraft` (`craft-web-api`, `api.rs`: `request`, `execute`, `commands`, `docInspect`, `uiInspect`, `screenshot` over
+  the control channel) on every page, which lets any script of the page, or a same-origin page that frames the editor, run any
+  command of the engine past the guards below. `web.rs` installs it only when `api_policy::offered` says so: not when our bridge
+  is up (`?host=parent` framed by a page of the same origin), not when the canvas carries `data-host` (upstream's own way to
+  host the editor). Without a page, the plain browser app keeps upstream's API. `app.control_rx` stays empty without it: no
+  control channel exists in a hosted editor.
 - **The French line of the bridge's message** ("Couldn't save {name}: {error}"): new file
   `crates/ui-egui/src/i18n/neoffice.rs`, which `Language::tr` falls back to after upstream's French
   catalog (two marked lines in `crates/ui-egui/src/i18n.rs`). Every other language has it too, in the same
@@ -102,7 +123,14 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   last window leaves the page without its workbook in view (an editor with no workbook starts a blank one); the View tab
   draws no New Window, Arrange All or Switch Windows (`ribbon/view.rs`) and the command search does not list them.
   Upstream's macros cannot reach the workbooks either way: their policy denies `file.*`, `window.*` and the window commands
-  in a macro step (`engine/src/macros/policy.rs`). New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
+  in a macro step (`engine/src/macros/policy.rs`). **Except two, which v0.17's form buttons made reachable**: a button's command
+  runs inside the engine (`control.press`, through that policy), below `SheetApp::run`'s guard, and the list let
+  `view.switchWindows` and `view.arrangeAll` through (a stored script's list, `cmd/extra/scripts.rs`, let `view.arrangeAll`
+  through). Both lists now deny them (marked lines in `macros/policy.rs`, its test, and `scripts.rs`; drop them when upstream
+  does the same). Tests: `crates/engine/tests/stored_window_commands.rs` (a button, a forged button and a stored script, for every
+  command that reaches another workbook or window) and, in `host_documents.rs`, a sweep that runs every command of the engine in
+  a hosting editor, directly and as a button's action, and checks that the page's workbook is still the only one, in its window.
+  New test file `crates/ui-egui/tests/host_documents.rs`; the French line of the message is in
   `i18n/neoffice.rs`. Every other build behaves as before.
   Two things still reach a file there, and stay on the page's workbook (new file `crates/ui-egui/src/hosted.rs`, marked lines
   in `lib.rs`: the module, `Services::pick_import_async`, the `host_protected_file` and `imports` fields of `SheetApp`, the
@@ -223,7 +251,13 @@ the Nora pane's verdict on each (`allowed` in `nora_pane.rs`) for the catalogue 
   typographic U+2019, grouping the whole part in threes) is read as the same entry with commas, so it gets upstream's
   automatic `#,##0` or `#,##0.00`; `12'3` and a leading apostrophe stay text, and a text cell that would read back as a
   number starts editing with the `'` that keeps it text. Every other locale reads an apostrophe as text, and nothing
-  computed (`VALUE()`, arithmetic on text) depends on the locale.
+  computed (`VALUE()`, arithmetic on text) depends on the locale. v0.19.0 rewrote `numfmt/src/render.rs` (one built-in table,
+  `calendar.rs`): the four places that write a thousands separator in it (`fill_int` three times, `with_commas`) were marked again
+  by hand, along with the `GROUPING` cell on top of the file. **Watch the next merge**: v0.19.0 added `core::region` (M12, 20
+  regions, among them the four Swiss ones with the apostrophe, typed and shown), which in v0.19.1 is data only (`Workbook::region`
+  is read by nothing yet). When upstream wires it, its Swiss region will do what `number_locale.rs` and `locale_input.rs` do here:
+  keep one of the two, not both. "Set precision as displayed" (`NumberFormat::round_as_displayed`) works on the number, never
+  on the shown text, so the separator does not reach it.
 
 - **The status bar in the editor's language** (marked lines in `crates/ui-egui/src/tabs.rs`, `status_bar` and
   `selection_statistic_values`; the strings in

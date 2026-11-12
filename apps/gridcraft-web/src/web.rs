@@ -45,6 +45,11 @@ pub fn start() {
         // //// Neoffice — `?host=parent`: a same-origin page framing GridCraft (the Drive of the Suite, NeoDesk's window) gives it the
         // workbook to edit and stores what it saves (`host`). `None` unless the page asks and such a page frames this one.
         let bridge = crate::host::Bridge::requested();
+        // //// Neoffice — upstream (v0.18.0) puts `window.gridcraft` on every page: any script of the page, or a same-origin page that
+        // frames this one, could then run any command (`file.open`, `view.newWindow`, a macro) on the editor, past the guards that
+        // keep the hosting page's workbook the only one. Where a page hosts the editor, whether by our bridge or by upstream's
+        // `data-host` attribute (which this build does not speak), that API is not installed (api_policy.rs).
+        let page_api = crate::api_policy::offered(bridge.is_some(), canvas.has_attribute("data-host"));
         let app_bridge = bridge.clone();
         let result = eframe::WebRunner::new()
             .start(
@@ -120,6 +125,10 @@ pub fn start() {
                     // when the person closed it on an earlier visit (remembered in the browser, nora_pane::open_as_remembered).
                     if let Err(e) = gridcraft_ui_egui::nora_pane::open_as_remembered(&mut app, nora.is_some()) {
                         log::error!("the Nora pane could not be set: {e}");
+                    }
+                    // //// Neoffice — only where no page hosts the editor (see `page_api` above).
+                    if page_api {
+                        crate::api::install(&mut app, cc.egui_ctx.clone());
                     }
                     Ok(Box::new(WebShell { app, inbox, bridge: app_bridge, prefs }))
                 }),
@@ -238,7 +247,7 @@ fn services(inbox: Inbox, ctx: egui::Context) -> Services {
             let ctx = ctx.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let Some(file) = rfd::AsyncFileDialog::new()
-                    .add_filter("Spreadsheets", &["xlsx", "xlsm", "xls", "xlsb", "ods", "csv", "tsv", "txt", "json"])
+                    .add_filter("Spreadsheets", &["xlsx", "xlsm", "xls", "xlsb", "ods", "csv", "tsv", "txt", "slk", "json"])
                     .pick_file()
                     .await
                 else {

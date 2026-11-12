@@ -38,6 +38,13 @@ const DENIED: &[(&str, &str)] = &[
     ("view.newWindow", "macros don't open, hide or show windows"),
     ("view.hideWindow", "macros don't open, hide or show windows"),
     ("view.unhideWindow", "macros don't open, hide or show windows"),
+    // //// Neoffice — `view.switchWindows` and `view.arrangeAll` were the two window commands this list let through (their sisters
+    // above and the `window.` prefix are denied): a macro, and a form button (`control.press` runs its command through this policy,
+    // below the editor's own guard for a page that hosts it) could switch the active workbook or rearrange the windows of an editor
+    // whose page keeps its one workbook in view. Drop the two lines when upstream denies them.
+    ("view.switchWindows", "macros don't open, hide or show windows"),
+    ("view.arrangeAll", "macros don't open, hide or show windows"),
+    ("control.press", "macros don't press form controls"),
 ];
 
 /// Commands under a denied prefix that only change the workbook.
@@ -112,6 +119,10 @@ mod tests {
             "view.newWindow",
             "view.hideWindow",
             "view.unhideWindow",
+            // //// Neoffice — see `DENIED`: the two window commands upstream's list forgot.
+            "view.switchWindows",
+            "view.arrangeAll",
+            "control.press",
         ] {
             assert!(matches!(macro_policy(id, &none, Trust::Local), Policy::Deny(_)), "{id}");
             assert!(matches!(macro_policy(id, &path, Trust::FromFile), Policy::Deny(_)), "{id}");

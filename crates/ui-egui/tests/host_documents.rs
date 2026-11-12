@@ -338,3 +338,62 @@ fn the_pages_password_protected_workbook_is_never_saved_back_in_clear() {
     assert_eq!(handed.lock().unwrap().as_slice(), ["Secret.xlsx".to_string()], "saved to the page");
     assert_ne!(h.state().notice.as_ref().map(|n| n.text.as_str()), Some(SAVE_IN_CLEAR_REFUSED));
 }
+
+fn hosted_app() -> SheetApp {
+    let mut session = Session::new();
+    session.new_workbook();
+    SheetApp::new(session, Services { host_owns_documents: true, ..Default::default() })
+}
+
+/// The workbooks open, the windows open, and the window in front.
+fn layout(app: &SheetApp) -> (usize, usize, Option<u64>) {
+    (app.session.documents().len(), app.session.windows().len(), app.session.active_window())
+}
+
+/// What a form button that came with a file would run: straight into the model, as a workbook's file puts it, past the
+/// refusal `insert.button` and `control.assign` make when the action is given.
+fn button_with(app: &mut SheetApp, id: &str, params: serde_json::Value) -> u64 {
+    let control = app.run("insert.button", json!({"text": "From a file"})).unwrap()["control"].as_u64().unwrap();
+    let doc = app.session.doc_mut().unwrap();
+    let sheet = std::sync::Arc::make_mut(&mut doc.wb).sheet_mut(0).unwrap();
+    let button = sheet.controls.iter_mut().find(|c| u64::from(c.id) == control).unwrap();
+    button.action = Some(gridcraft_engine::model::ControlAction::Command { id: id.into(), params });
+    control
+}
+
+/// Since v0.17 a form button runs a command inside the engine (`control.press`), below `SheetApp::run`'s guard, through the
+/// macro policy, which let `view.switchWindows` and `view.arrangeAll` through. Every command the engine has, run in an editor
+/// whose page opens the workbooks (as itself, with the parameters that name another window or workbook, and as the action of a
+/// button that came with a file), leaves the page's workbook the only one, in the window it was in. A command a later upstream
+/// adds that opens, closes or switches workbooks or windows fails here, whatever it is called.
+#[test]
+fn no_command_brings_another_workbook_or_window_to_a_host_that_opens_the_workbooks() {
+    let ids: Vec<&str> = gridcraft_engine::cmd::command_specs().iter().map(|c| c.id).collect();
+    assert!(ids.len() > 300, "the engine's commands are listed: {}", ids.len());
+    let named = json!({"window": 1, "doc": 1, "force": true, "name": "Book1", "all": true});
+    for id in ids {
+        for params in [json!({}), named.clone()] {
+            let mut app = hosted_app();
+            let before = layout(&app);
+            let _ = app.run(id, params.clone());
+            assert_eq!(layout(&app), before, "{id} {params}: the page's workbook stays the only one, in its window");
+
+            // The same command as a button's action. Pressing runs it through the macro policy and the sandbox, or refuses it.
+            let mut app = hosted_app();
+            let button = button_with(&mut app, id, params.clone());
+            let before = layout(&app);
+            let _ = app.run("control.press", json!({"id": button, "approve": true}));
+            assert_eq!(layout(&app), before, "{id} {params} pressed from a button: the page's workbook stays the only one, in its window");
+        }
+    }
+}
+
+/// The refusal is for the commands that bring another workbook or window, not for every command a button may run: a
+/// button on the page's workbook still works.
+#[test]
+fn a_button_still_runs_an_ordinary_command_for_a_host_that_opens_the_workbooks() {
+    let mut app = hosted_app();
+    let button = button_with(&mut app, "cell.set", json!({"cell": "B2", "input": "9"}));
+    app.run("control.press", json!({"id": button, "approve": true})).unwrap();
+    assert_eq!(app.session.active().unwrap().wb.active().unwrap().value(CellRef::parse("B2").unwrap()), Value::Number(9.0));
+}
