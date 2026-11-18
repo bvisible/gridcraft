@@ -1,5 +1,9 @@
 use super::{Json, Notice, NoticeKind, OpenWindow, SheetApp, clean_error, json};
 
+// //// Neoffice — the info bar's sentence for several open notices, a key of the translations (i18n/neoffice.rs,
+// //// IMPORT_FRENCH) rather than upstream's English `format!`; its English reads as upstream's did.
+pub(crate) const MORE_NOTICES: &str = "{count} items in this file were handled differently. First: {first}";
+
 impl SheetApp {
     pub fn open_path(&mut self, path: &str) {
         match self.run("file.open", json!({"path": path})) {
@@ -56,10 +60,16 @@ impl SheetApp {
             };
             self.notice = Some(Notice { text: text.into(), kind: NoticeKind::Warning, action: Some(("What this means".into(), "macros".into())) });
         } else {
+            // //// Neoffice — in the interface's language: the first notice (an import's, i18n/neoffice.rs IMPORT_FRENCH) and
+            // //// the sentence that counts them, which upstream wrote in English with `format!`
+            let language = self.ui.language;
+            let first = language.tr_error(msgs[0]);
             let text = if msgs.len() == 1 {
-                msgs[0].to_string()
+                // //// Neoffice — the notice translated (see above)
+                first
             } else {
-                format!("{} items in this file were handled differently. First: {}", msgs.len(), msgs[0])
+                // //// Neoffice — the counting sentence translated (MORE_NOTICES)
+                language.tr(MORE_NOTICES).replace("{count}", &msgs.len().to_string()).replace("{first}", &first)
             };
             self.notice = Some(Notice { text, kind: NoticeKind::Info, action: None });
         }

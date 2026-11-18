@@ -1642,6 +1642,10 @@ const IMPORT_FRENCH: &[(&str, &str)] = &[
         "Les blocs XLSB d'enregistrements futurs et de contenu de remplacement non pris en charge ont été ignorés.",
     ),
     ("Invalid XLSB merged ranges were skipped.", "Les plages de cellules fusionnées XLSB non valides ont été ignorées."),
+    (
+        "{count} items in this file were handled differently. First: {first}",
+        "{count} éléments de ce fichier ont été traités différemment. Première remarque : {first}",
+    ),
 ];
 
 /// The import notices in German.
@@ -1709,6 +1713,10 @@ const IMPORT_GERMAN: &[(&str, &str)] = &[
         "Nicht unterstützte XLSB-Blöcke für künftige Datensätze und alternative Inhalte wurden übersprungen.",
     ),
     ("Invalid XLSB merged ranges were skipped.", "Ungültige verbundene Bereiche in XLSB wurden übersprungen."),
+    (
+        "{count} items in this file were handled differently. First: {first}",
+        "{count} Elemente in dieser Datei wurden anders behandelt. Erste Meldung: {first}",
+    ),
 ];
 
 /// The import notices in Italian.
@@ -1773,6 +1781,10 @@ const IMPORT_ITALIAN: &[(&str, &str)] = &[
         "I blocchi XLSB di record futuri e di contenuto alternativo non supportati sono stati ignorati.",
     ),
     ("Invalid XLSB merged ranges were skipped.", "Gli intervalli di celle unite XLSB non validi sono stati ignorati."),
+    (
+        "{count} items in this file were handled differently. First: {first}",
+        "{count} elementi di questo file sono stati gestiti in modo diverso. Primo avviso: {first}",
+    ),
 ];
 
 /// The import notices in Spanish.
@@ -1840,6 +1852,10 @@ const IMPORT_SPANISH: &[(&str, &str)] = &[
         "Se omitieron los bloques XLSB de registros futuros y de contenido alternativo no compatibles.",
     ),
     ("Invalid XLSB merged ranges were skipped.", "Se omitieron los rangos combinados de XLSB no válidos."),
+    (
+        "{count} items in this file were handled differently. First: {first}",
+        "{count} elementos de este archivo se gestionaron de otra manera. Primer aviso: {first}",
+    ),
 ];
 
 /// The import notices for a language that has them (see `IMPORT_FRENCH`).
@@ -1964,7 +1980,13 @@ mod tests {
     // //// Neoffice — the import notices: the formats crate's own words, the same in every table, translated paragraph by paragraph.
     #[test]
     fn the_import_notices_are_the_formats_crate_s_own_words_in_every_table() {
-        let sources = [include_str!("../../../xlsx/src/xls.rs"), include_str!("../../../xlsx/src/xlsb.rs"), include_str!("../../../xlsx/src/ods.rs")];
+        // and the info bar's sentence that counts them (app/files.rs, MORE_NOTICES)
+        let sources = [
+            include_str!("../../../xlsx/src/xls.rs"),
+            include_str!("../../../xlsx/src/xlsb.rs"),
+            include_str!("../../../xlsx/src/ods.rs"),
+            include_str!("../app/files.rs"),
+        ];
         let english: Vec<&str> = IMPORT_FRENCH.iter().map(|(english, _)| *english).collect();
         for notice in &english {
             assert!(sources.iter().any(|source| source.contains(&format!("\"{notice}\""))), "{notice:?} is no longer a notice of the formats crate");
@@ -2006,6 +2028,26 @@ mod tests {
         assert_ne!(paragraphs[1], comments);
         assert_eq!(paragraphs[2], "A notice nobody translated.");
         assert_eq!(Language::En.tr_paragraphs(&joined), joined);
+    }
+
+    #[test]
+    fn the_info_bar_says_an_import_s_notices_in_french() {
+        let mut session = gridcraft_engine::Session::default();
+        session.new_workbook();
+        let mut app = crate::SheetApp::new(session, Default::default());
+        app.ui.language = Language::Fr;
+        let overview = IMPORT_FRENCH[0].0;
+        app.show_open_warnings(&serde_json::json!({"warnings": [overview]}));
+        let one = app.notice.as_ref().map(|n| n.text.clone()).unwrap_or_default();
+        assert!(one.starts_with("Importé d'un classeur Excel 97-2003 (.xls)"), "{one}");
+        app.show_open_warnings(&serde_json::json!({"warnings": [overview, "Cell comments in .xls files are not imported yet."]}));
+        let two = app.notice.as_ref().map(|n| n.text.clone()).unwrap_or_default();
+        assert!(two.starts_with("2 ") && two.contains("Importé d'un classeur") && !two.contains("handled differently"), "{two}");
+        // English reads as upstream's sentence did
+        app.ui.language = Language::En;
+        app.show_open_warnings(&serde_json::json!({"warnings": [overview, "Cell comments in .xls files are not imported yet."]}));
+        let english = app.notice.as_ref().map(|n| n.text.clone()).unwrap_or_default();
+        assert_eq!(english, format!("2 items in this file were handled differently. First: {overview}"));
     }
 
     #[test]
