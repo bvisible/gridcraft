@@ -1562,7 +1562,295 @@ const STATUS_BAR_SPANISH: &[(&str, &str)] = &[
 
 /// `text` in `language`, when Neoffice has translated it. English has nothing to translate.
 pub(super) fn added(language: Language, text: &str) -> Option<&'static str> {
-    table(language).and_then(|table| find(table, text)).or_else(|| status_bar(language).and_then(|table| find(table, text)))
+    table(language)
+        .and_then(|table| find(table, text))
+        .or_else(|| status_bar(language).and_then(|table| find(table, text)))
+        // //// Neoffice — and the notices of an import (IMPORT_FRENCH).
+        .or_else(|| import_notices(language).and_then(|table| find(table, text)))
+}
+
+// //// Neoffice — the notices of an import (.xls, .xlsb, .ods), which the formats crate (gridcraft-xlsx: xls.rs, xlsb.rs, ods.rs)
+// //// writes in English and upstream's catalogs do not have: a French workbook imported from an .xls said « Imported from an
+// //// Excel 97-2003 (.xls) workbook… » in English, in the Drive of the Suite. In the languages of the status bar's words;
+// //// `file.open` joins a workbook's notices with a blank line, and the message box asks for each one
+// //// (`Language::tr_paragraphs`). Each table has the same English strings, in the same order.
+/// The import notices in French.
+const IMPORT_FRENCH: &[(&str, &str)] = &[
+    (
+        "Imported from an Excel 97-2003 (.xls) workbook: values, formulas, cell formatting, merged cells, column widths, row heights and defined names were read. Charts, pictures, comments and other features are not imported yet. Save as .xlsx; saving .xls is not supported.",
+        "Importé d'un classeur Excel 97-2003 (.xls) : les valeurs, les formules, la mise en forme des cellules, les cellules fusionnées, les largeurs de colonnes, les hauteurs de lignes et les noms définis ont été lus. Les graphiques, les images, les commentaires et les autres éléments ne sont pas encore importés. Enregistrez le fichier au format .xlsx ; l'enregistrement au format .xls n'est pas pris en charge.",
+    ),
+    (
+        "Some cell formatting records were shorter than expected; the formatting present was kept.",
+        "Certains enregistrements de mise en forme des cellules étaient plus courts que prévu ; la mise en forme présente a été conservée.",
+    ),
+    ("Dialog sheets and unreadable sheets were skipped.", "Les feuilles de boîte de dialogue et les feuilles illisibles ont été ignorées."),
+    (
+        "Some number formats were shorter than their declared length; the characters present were kept.",
+        "Certains formats de nombre étaient plus courts que leur longueur déclarée ; les caractères présents ont été conservés.",
+    ),
+    (
+        "Some cells refer to missing shared strings and were left empty.",
+        "Certaines cellules font référence à des chaînes partagées absentes et ont été laissées vides.",
+    ),
+    (
+        "What-if data tables are not supported; their values were kept.",
+        "Les tables de données (hypothèses) ne sont pas prises en charge ; leurs valeurs ont été conservées.",
+    ),
+    ("Cell comments in .xls files are not imported yet.", "Les commentaires de cellules des fichiers .xls ne sont pas encore importés."),
+    (
+        "Pictures, charts and shapes in .xls files are not imported yet.",
+        "Les images, les graphiques et les formes des fichiers .xls ne sont pas encore importés.",
+    ),
+    ("Conditional formatting in .xls files is not imported yet.", "La mise en forme conditionnelle des fichiers .xls n'est pas encore importée."),
+    ("Data validation in .xls files is not imported yet.", "La validation des données des fichiers .xls n'est pas encore importée."),
+    ("Hyperlinks in .xls files are not imported yet.", "Les liens hypertexte des fichiers .xls ne sont pas encore importés."),
+    (
+        "PivotTables in .xls files are not imported yet; their values were kept.",
+        "Les tableaux croisés dynamiques des fichiers .xls ne sont pas encore importés ; leurs valeurs ont été conservées.",
+    ),
+    ("Macro names were skipped.", "Les noms de macros ont été ignorés."),
+    (
+        "Chart sheets in .xls files are not imported yet and were skipped.",
+        "Les feuilles de graphique des fichiers .xls ne sont pas encore importées et ont été ignorées.",
+    ),
+    ("Excel 4.0 macro sheets were skipped.", "Les feuilles de macros Excel 4.0 ont été ignorées."),
+    (
+        "VBA modules and other non-worksheet sheets were skipped.",
+        "Les modules VBA et les autres feuilles qui ne sont pas des feuilles de calcul ont été ignorés.",
+    ),
+    (
+        "ODS data-only import: formulas become their saved results and will not recalculate. Source formatting, charts, images and other features are not imported. Save a new .xlsx file; ODS saving is not supported.",
+        "Importation des données uniquement depuis un fichier ODS : les formules sont remplacées par leurs résultats enregistrés et ne seront pas recalculées. La mise en forme d'origine, les graphiques, les images et les autres éléments ne sont pas importés. Enregistrez un nouveau fichier .xlsx ; l'enregistrement au format ODS n'est pas pris en charge.",
+    ),
+    (
+        "Some ODS sheet names were shortened or renamed to valid, unique XLSX sheet names.",
+        "Certains noms de feuilles ODS ont été raccourcis ou renommés en noms de feuilles XLSX valides et uniques.",
+    ),
+    (
+        "Some ODS values or formula caches were unsupported or missing; their displayed text (or raw value) was kept as text. A formula without either is marked [Unavailable ODS formula result].",
+        "Certaines valeurs ou certains résultats de formules ODS n'étaient pas pris en charge ou manquaient ; leur texte affiché (ou leur valeur brute) a été conservé en tant que texte. Une formule sans l'un ni l'autre est marquée [Unavailable ODS formula result].",
+    ),
+    (
+        "XLSB data-only import: formulas become their saved results and will not recalculate. Formatting, charts, images, macros and other features are not imported; dates, currency and percentages may display as numbers. Save a new .xlsx file; XLSB saving is not supported.",
+        "Importation des données uniquement depuis un fichier XLSB : les formules sont remplacées par leurs résultats enregistrés et ne seront pas recalculées. La mise en forme, les graphiques, les images, les macros et les autres éléments ne sont pas importés ; les dates, les devises et les pourcentages peuvent s'afficher sous forme de nombres. Enregistrez un nouveau fichier .xlsx ; l'enregistrement au format XLSB n'est pas pris en charge.",
+    ),
+    ("XLSB module sheets were skipped.", "Les feuilles de modules XLSB ont été ignorées."),
+    ("XLSB non-worksheet sheets were skipped.", "Les feuilles XLSB qui ne sont pas des feuilles de calcul ont été ignorées."),
+    (
+        "Unsupported XLSB future-record and alternate-content blocks were skipped.",
+        "Les blocs XLSB d'enregistrements futurs et de contenu de remplacement non pris en charge ont été ignorés.",
+    ),
+    ("Invalid XLSB merged ranges were skipped.", "Les plages de cellules fusionnées XLSB non valides ont été ignorées."),
+];
+
+/// The import notices in German.
+const IMPORT_GERMAN: &[(&str, &str)] = &[
+    (
+        "Imported from an Excel 97-2003 (.xls) workbook: values, formulas, cell formatting, merged cells, column widths, row heights and defined names were read. Charts, pictures, comments and other features are not imported yet. Save as .xlsx; saving .xls is not supported.",
+        "Import aus einer Arbeitsmappe im Format Excel 97-2003 (.xls): Werte, Formeln, Zellformatierung, verbundene Zellen, Spaltenbreiten, Zeilenhöhen und definierte Namen wurden gelesen. Diagramme, Bilder, Kommentare und weitere Elemente werden noch nicht importiert. Speichern Sie als .xlsx; das Speichern als .xls wird nicht unterstützt.",
+    ),
+    (
+        "Some cell formatting records were shorter than expected; the formatting present was kept.",
+        "Einige Formatierungsdatensätze der Zellen waren kürzer als erwartet; die vorhandene Formatierung wurde beibehalten.",
+    ),
+    ("Dialog sheets and unreadable sheets were skipped.", "Dialogblätter und nicht lesbare Tabellenblätter wurden übersprungen."),
+    (
+        "Some number formats were shorter than their declared length; the characters present were kept.",
+        "Einige Zahlenformate waren kürzer als ihre angegebene Länge; die vorhandenen Zeichen wurden beibehalten.",
+    ),
+    (
+        "Some cells refer to missing shared strings and were left empty.",
+        "Einige Zellen verweisen auf fehlende gemeinsame Zeichenfolgen und wurden leer gelassen.",
+    ),
+    (
+        "What-if data tables are not supported; their values were kept.",
+        "Datentabellen für Was-wäre-wenn-Analysen werden nicht unterstützt; ihre Werte wurden beibehalten.",
+    ),
+    ("Cell comments in .xls files are not imported yet.", "Zellkommentare in .xls-Dateien werden noch nicht importiert."),
+    ("Pictures, charts and shapes in .xls files are not imported yet.", "Bilder, Diagramme und Formen in .xls-Dateien werden noch nicht importiert."),
+    ("Conditional formatting in .xls files is not imported yet.", "Bedingte Formatierungen in .xls-Dateien werden noch nicht importiert."),
+    ("Data validation in .xls files is not imported yet.", "Datenüberprüfungen in .xls-Dateien werden noch nicht importiert."),
+    ("Hyperlinks in .xls files are not imported yet.", "Hyperlinks in .xls-Dateien werden noch nicht importiert."),
+    (
+        "PivotTables in .xls files are not imported yet; their values were kept.",
+        "Pivot-Tabellen in .xls-Dateien werden noch nicht importiert; ihre Werte wurden beibehalten.",
+    ),
+    ("Macro names were skipped.", "Makronamen wurden übersprungen."),
+    (
+        "Chart sheets in .xls files are not imported yet and were skipped.",
+        "Diagrammblätter in .xls-Dateien werden noch nicht importiert und wurden übersprungen.",
+    ),
+    ("Excel 4.0 macro sheets were skipped.", "Makroblätter aus Excel 4.0 wurden übersprungen."),
+    (
+        "VBA modules and other non-worksheet sheets were skipped.",
+        "VBA-Module und andere Blätter, die keine Tabellenblätter sind, wurden übersprungen.",
+    ),
+    (
+        "ODS data-only import: formulas become their saved results and will not recalculate. Source formatting, charts, images and other features are not imported. Save a new .xlsx file; ODS saving is not supported.",
+        "Import nur der Daten aus einer ODS-Datei: Formeln werden durch ihre gespeicherten Ergebnisse ersetzt und nicht neu berechnet. Die ursprüngliche Formatierung, Diagramme, Bilder und weitere Elemente werden nicht importiert. Speichern Sie eine neue .xlsx-Datei; das Speichern als ODS wird nicht unterstützt.",
+    ),
+    (
+        "Some ODS sheet names were shortened or renamed to valid, unique XLSX sheet names.",
+        "Einige ODS-Blattnamen wurden gekürzt oder in gültige, eindeutige XLSX-Blattnamen umbenannt.",
+    ),
+    (
+        "Some ODS values or formula caches were unsupported or missing; their displayed text (or raw value) was kept as text. A formula without either is marked [Unavailable ODS formula result].",
+        "Einige ODS-Werte oder gespeicherte Formelergebnisse wurden nicht unterstützt oder fehlten; ihr angezeigter Text (oder Rohwert) wurde als Text beibehalten. Eine Formel ohne beides ist mit [Unavailable ODS formula result] markiert.",
+    ),
+    (
+        "XLSB data-only import: formulas become their saved results and will not recalculate. Formatting, charts, images, macros and other features are not imported; dates, currency and percentages may display as numbers. Save a new .xlsx file; XLSB saving is not supported.",
+        "Import nur der Daten aus einer XLSB-Datei: Formeln werden durch ihre gespeicherten Ergebnisse ersetzt und nicht neu berechnet. Formatierung, Diagramme, Bilder, Makros und weitere Elemente werden nicht importiert; Datums-, Währungs- und Prozentwerte können als Zahlen angezeigt werden. Speichern Sie eine neue .xlsx-Datei; das Speichern als XLSB wird nicht unterstützt.",
+    ),
+    ("XLSB module sheets were skipped.", "XLSB-Modulblätter wurden übersprungen."),
+    ("XLSB non-worksheet sheets were skipped.", "XLSB-Blätter, die keine Tabellenblätter sind, wurden übersprungen."),
+    (
+        "Unsupported XLSB future-record and alternate-content blocks were skipped.",
+        "Nicht unterstützte XLSB-Blöcke für künftige Datensätze und alternative Inhalte wurden übersprungen.",
+    ),
+    ("Invalid XLSB merged ranges were skipped.", "Ungültige verbundene Bereiche in XLSB wurden übersprungen."),
+];
+
+/// The import notices in Italian.
+const IMPORT_ITALIAN: &[(&str, &str)] = &[
+    (
+        "Imported from an Excel 97-2003 (.xls) workbook: values, formulas, cell formatting, merged cells, column widths, row heights and defined names were read. Charts, pictures, comments and other features are not imported yet. Save as .xlsx; saving .xls is not supported.",
+        "Importato da una cartella di lavoro Excel 97-2003 (.xls): sono stati letti valori, formule, formattazione delle celle, celle unite, larghezze delle colonne, altezze delle righe e nomi definiti. Grafici, immagini, commenti e altre funzioni non sono ancora importati. Salva come .xlsx; il salvataggio in .xls non è supportato.",
+    ),
+    (
+        "Some cell formatting records were shorter than expected; the formatting present was kept.",
+        "Alcuni record di formattazione delle celle erano più corti del previsto; la formattazione presente è stata mantenuta.",
+    ),
+    ("Dialog sheets and unreadable sheets were skipped.", "I fogli di dialogo e i fogli illeggibili sono stati ignorati."),
+    (
+        "Some number formats were shorter than their declared length; the characters present were kept.",
+        "Alcuni formati numerici erano più corti della lunghezza dichiarata; i caratteri presenti sono stati mantenuti.",
+    ),
+    (
+        "Some cells refer to missing shared strings and were left empty.",
+        "Alcune celle fanno riferimento a stringhe condivise mancanti e sono state lasciate vuote.",
+    ),
+    (
+        "What-if data tables are not supported; their values were kept.",
+        "Le tabelle dei dati di simulazione (ipotesi) non sono supportate; i relativi valori sono stati mantenuti.",
+    ),
+    ("Cell comments in .xls files are not imported yet.", "I commenti delle celle nei file .xls non sono ancora importati."),
+    ("Pictures, charts and shapes in .xls files are not imported yet.", "Immagini, grafici e forme nei file .xls non sono ancora importati."),
+    ("Conditional formatting in .xls files is not imported yet.", "La formattazione condizionale nei file .xls non è ancora importata."),
+    ("Data validation in .xls files is not imported yet.", "La convalida dei dati nei file .xls non è ancora importata."),
+    ("Hyperlinks in .xls files are not imported yet.", "I collegamenti ipertestuali nei file .xls non sono ancora importati."),
+    (
+        "PivotTables in .xls files are not imported yet; their values were kept.",
+        "Le tabelle pivot nei file .xls non sono ancora importate; i relativi valori sono stati mantenuti.",
+    ),
+    ("Macro names were skipped.", "I nomi delle macro sono stati ignorati."),
+    (
+        "Chart sheets in .xls files are not imported yet and were skipped.",
+        "I fogli grafico nei file .xls non sono ancora importati e sono stati ignorati.",
+    ),
+    ("Excel 4.0 macro sheets were skipped.", "I fogli macro di Excel 4.0 sono stati ignorati."),
+    ("VBA modules and other non-worksheet sheets were skipped.", "I moduli VBA e gli altri fogli che non sono fogli di lavoro sono stati ignorati."),
+    (
+        "ODS data-only import: formulas become their saved results and will not recalculate. Source formatting, charts, images and other features are not imported. Save a new .xlsx file; ODS saving is not supported.",
+        "Importazione solo dei dati da un file ODS: le formule diventano i risultati salvati e non verranno ricalcolate. La formattazione di origine, i grafici, le immagini e altre funzioni non sono importati. Salva un nuovo file .xlsx; il salvataggio in ODS non è supportato.",
+    ),
+    (
+        "Some ODS sheet names were shortened or renamed to valid, unique XLSX sheet names.",
+        "Alcuni nomi dei fogli ODS sono stati abbreviati o rinominati in nomi di foglio XLSX validi e univoci.",
+    ),
+    (
+        "Some ODS values or formula caches were unsupported or missing; their displayed text (or raw value) was kept as text. A formula without either is marked [Unavailable ODS formula result].",
+        "Alcuni valori ODS o risultati di formule memorizzati non erano supportati o mancavano; il testo visualizzato (o il valore grezzo) è stato mantenuto come testo. Una formula senza entrambi è contrassegnata con [Unavailable ODS formula result].",
+    ),
+    (
+        "XLSB data-only import: formulas become their saved results and will not recalculate. Formatting, charts, images, macros and other features are not imported; dates, currency and percentages may display as numbers. Save a new .xlsx file; XLSB saving is not supported.",
+        "Importazione solo dei dati da un file XLSB: le formule diventano i risultati salvati e non verranno ricalcolate. Formattazione, grafici, immagini, macro e altre funzioni non sono importati; date, valute e percentuali potrebbero essere visualizzate come numeri. Salva un nuovo file .xlsx; il salvataggio in XLSB non è supportato.",
+    ),
+    ("XLSB module sheets were skipped.", "I fogli dei moduli XLSB sono stati ignorati."),
+    ("XLSB non-worksheet sheets were skipped.", "I fogli XLSB che non sono fogli di lavoro sono stati ignorati."),
+    (
+        "Unsupported XLSB future-record and alternate-content blocks were skipped.",
+        "I blocchi XLSB di record futuri e di contenuto alternativo non supportati sono stati ignorati.",
+    ),
+    ("Invalid XLSB merged ranges were skipped.", "Gli intervalli di celle unite XLSB non validi sono stati ignorati."),
+];
+
+/// The import notices in Spanish.
+const IMPORT_SPANISH: &[(&str, &str)] = &[
+    (
+        "Imported from an Excel 97-2003 (.xls) workbook: values, formulas, cell formatting, merged cells, column widths, row heights and defined names were read. Charts, pictures, comments and other features are not imported yet. Save as .xlsx; saving .xls is not supported.",
+        "Importado de un libro de Excel 97-2003 (.xls): se leyeron valores, fórmulas, formato de celdas, celdas combinadas, anchos de columna, alturas de fila y nombres definidos. Los gráficos, las imágenes, los comentarios y otras funciones todavía no se importan. Guarde como .xlsx; no se admite guardar en .xls.",
+    ),
+    (
+        "Some cell formatting records were shorter than expected; the formatting present was kept.",
+        "Algunos registros de formato de celda eran más cortos de lo esperado; se conservó el formato presente.",
+    ),
+    ("Dialog sheets and unreadable sheets were skipped.", "Se omitieron las hojas de diálogo y las hojas no legibles."),
+    (
+        "Some number formats were shorter than their declared length; the characters present were kept.",
+        "Algunos formatos numéricos eran más cortos que su longitud declarada; se conservaron los caracteres presentes.",
+    ),
+    (
+        "Some cells refer to missing shared strings and were left empty.",
+        "Algunas celdas hacen referencia a cadenas compartidas inexistentes y se dejaron vacías.",
+    ),
+    (
+        "What-if data tables are not supported; their values were kept.",
+        "Las tablas de datos de hipótesis (análisis de escenarios) no se admiten; se conservaron sus valores.",
+    ),
+    ("Cell comments in .xls files are not imported yet.", "Los comentarios de celda de los archivos .xls todavía no se importan."),
+    (
+        "Pictures, charts and shapes in .xls files are not imported yet.",
+        "Las imágenes, los gráficos y las formas de los archivos .xls todavía no se importan.",
+    ),
+    ("Conditional formatting in .xls files is not imported yet.", "El formato condicional de los archivos .xls todavía no se importa."),
+    ("Data validation in .xls files is not imported yet.", "La validación de datos de los archivos .xls todavía no se importa."),
+    ("Hyperlinks in .xls files are not imported yet.", "Los hipervínculos de los archivos .xls todavía no se importan."),
+    (
+        "PivotTables in .xls files are not imported yet; their values were kept.",
+        "Las tablas dinámicas de los archivos .xls todavía no se importan; se conservaron sus valores.",
+    ),
+    ("Macro names were skipped.", "Se omitieron los nombres de las macros."),
+    (
+        "Chart sheets in .xls files are not imported yet and were skipped.",
+        "Las hojas de gráfico de los archivos .xls todavía no se importan y se omitieron.",
+    ),
+    ("Excel 4.0 macro sheets were skipped.", "Se omitieron las hojas de macros de Excel 4.0."),
+    ("VBA modules and other non-worksheet sheets were skipped.", "Se omitieron los módulos VBA y otras hojas que no son hojas de cálculo."),
+    (
+        "ODS data-only import: formulas become their saved results and will not recalculate. Source formatting, charts, images and other features are not imported. Save a new .xlsx file; ODS saving is not supported.",
+        "Importación solo de datos desde un archivo ODS: las fórmulas se convierten en sus resultados guardados y no se volverán a calcular. No se importan el formato original, los gráficos, las imágenes ni otras funciones. Guarde un nuevo archivo .xlsx; no se admite guardar en ODS.",
+    ),
+    (
+        "Some ODS sheet names were shortened or renamed to valid, unique XLSX sheet names.",
+        "Algunos nombres de hoja ODS se acortaron o se renombraron a nombres de hoja XLSX válidos y únicos.",
+    ),
+    (
+        "Some ODS values or formula caches were unsupported or missing; their displayed text (or raw value) was kept as text. A formula without either is marked [Unavailable ODS formula result].",
+        "Algunos valores ODS o resultados de fórmulas guardados no eran compatibles o faltaban; se conservó su texto mostrado (o su valor sin formato) como texto. Una fórmula sin ninguno de los dos aparece marcada como [Unavailable ODS formula result].",
+    ),
+    (
+        "XLSB data-only import: formulas become their saved results and will not recalculate. Formatting, charts, images, macros and other features are not imported; dates, currency and percentages may display as numbers. Save a new .xlsx file; XLSB saving is not supported.",
+        "Importación solo de datos desde un archivo XLSB: las fórmulas se convierten en sus resultados guardados y no se volverán a calcular. No se importan el formato, los gráficos, las imágenes, las macros ni otras funciones; las fechas, las monedas y los porcentajes pueden mostrarse como números. Guarde un nuevo archivo .xlsx; no se admite guardar en XLSB.",
+    ),
+    ("XLSB module sheets were skipped.", "Se omitieron las hojas de módulos XLSB."),
+    ("XLSB non-worksheet sheets were skipped.", "Se omitieron las hojas XLSB que no son hojas de cálculo."),
+    (
+        "Unsupported XLSB future-record and alternate-content blocks were skipped.",
+        "Se omitieron los bloques XLSB de registros futuros y de contenido alternativo no compatibles.",
+    ),
+    ("Invalid XLSB merged ranges were skipped.", "Se omitieron los rangos combinados de XLSB no válidos."),
+];
+
+/// The import notices for a language that has them (see `IMPORT_FRENCH`).
+fn import_notices(language: Language) -> Option<&'static [(&'static str, &'static str)]> {
+    match language {
+        Language::Fr => Some(IMPORT_FRENCH),
+        Language::De => Some(IMPORT_GERMAN),
+        Language::It => Some(IMPORT_ITALIAN),
+        Language::Es => Some(IMPORT_SPANISH),
+        _ => None,
+    }
 }
 
 /// The status bar's words for a language that has them (see `STATUS_BAR_FRENCH`).
@@ -1671,6 +1959,53 @@ mod tests {
         assert_eq!(Language::En.tr("Sum: {value}"), "Sum: {value}");
         assert_eq!(status_bar(Language::Ja), None, "other languages show upstream's English");
         assert_eq!(Language::Ja.tr("Count: {value}"), "Count: {value}");
+    }
+
+    // //// Neoffice — the import notices: the formats crate's own words, the same in every table, translated paragraph by paragraph.
+    #[test]
+    fn the_import_notices_are_the_formats_crate_s_own_words_in_every_table() {
+        let sources = [include_str!("../../../xlsx/src/xls.rs"), include_str!("../../../xlsx/src/xlsb.rs"), include_str!("../../../xlsx/src/ods.rs")];
+        let english: Vec<&str> = IMPORT_FRENCH.iter().map(|(english, _)| *english).collect();
+        for notice in &english {
+            assert!(sources.iter().any(|source| source.contains(&format!("\"{notice}\""))), "{notice:?} is no longer a notice of the formats crate");
+        }
+        for language in [Language::Fr, Language::De, Language::It, Language::Es] {
+            let table = import_notices(language).expect("a table");
+            assert_eq!(table.iter().map(|(english, _)| *english).collect::<Vec<_>>(), english, "{language:?}: the same strings, in the same order");
+            for (english, translated) in table {
+                assert_ne!(english, translated, "{language:?}: {english:?} is not translated");
+                assert_eq!(translated.trim(), *translated, "stray whitespace in {translated:?}");
+                assert!(!translated.contains("..."), "use … rather than three dots: {translated:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn every_static_notice_of_the_importers_has_its_translations() {
+        // The other way round: a notice the formats crate gains (`.warn("…")`) is in the tables, or listed here as one that
+        // is formatted with its values and cannot be a key.
+        const FORMATTED: [&str; 0] = [];
+        let sources = [include_str!("../../../xlsx/src/xls.rs"), include_str!("../../../xlsx/src/xlsb.rs"), include_str!("../../../xlsx/src/ods.rs")];
+        for source in sources {
+            for (_, rest) in source.match_indices("warn(\"").map(|(at, _)| source.split_at(at + "warn(\"".len())) {
+                let Some((notice, _)) = rest.split_once("\")") else { continue };
+                assert!(IMPORT_FRENCH.iter().any(|(english, _)| *english == notice) || FORMATTED.contains(&notice), "{notice:?} has no translation");
+            }
+        }
+    }
+
+    #[test]
+    fn an_import_s_notices_are_said_in_french_one_by_one() {
+        let overview = IMPORT_FRENCH[0].0;
+        let comments = "Cell comments in .xls files are not imported yet.";
+        let joined = format!("{overview}\n\n{comments}\n\nA notice nobody translated.");
+        let said = Language::Fr.tr_paragraphs(&joined);
+        let paragraphs: Vec<&str> = said.split("\n\n").collect();
+        assert_eq!(paragraphs.len(), 3);
+        assert!(paragraphs[0].starts_with("Importé d'un classeur Excel 97-2003 (.xls)"), "{said}");
+        assert_ne!(paragraphs[1], comments);
+        assert_eq!(paragraphs[2], "A notice nobody translated.");
+        assert_eq!(Language::En.tr_paragraphs(&joined), joined);
     }
 
     #[test]

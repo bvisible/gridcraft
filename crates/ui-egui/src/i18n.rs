@@ -241,6 +241,19 @@ impl Language {
         if translated == fallback { message } else { translated.to_owned() }
     }
 
+    // //// Neoffice — a message of several paragraphs (an import's notices, which `file.open` joins with a blank line) is
+    // //// translated paragraph by paragraph when the whole of it is not a catalog's string (i18n/neoffice.rs, IMPORT_FRENCH).
+    /// [`Self::tr_error`] of `message`, or of each of its paragraphs (separated by a blank line) when the whole is not
+    /// translated.
+    pub(crate) fn tr_paragraphs(self, message: &str) -> String {
+        let whole = self.tr_error(message);
+        // Our product's name put in (brand::rebrand) is not a translation: such a message still goes paragraph by paragraph.
+        if (whole != message && whole != crate::brand::rebrand(message)) || !message.contains("\n\n") {
+            return whole;
+        }
+        message.split("\n\n").map(|paragraph| self.tr_error(paragraph)).collect::<Vec<_>>().join("\n\n")
+    }
+
     /// A worksheet function's description in this language, looked up by the English text of the
     /// function catalog; `None` when untranslated, and the help shows the English.
     pub fn function_description(self, english: &str) -> Option<&'static str> {
