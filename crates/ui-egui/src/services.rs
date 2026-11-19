@@ -48,6 +48,13 @@ pub struct Services {
     // File › Home, New and Open are not offered and what would bring another workbook in, or close this one, is
     // refused. The page's own file still opens. Off, as upstream has it, for every other build.
     pub host_owns_documents: bool,
+    // //// Neoffice — the hosting page hears that the file it sent did not open: it says so and offers the file, rather than
+    // leave this editor's blank workbook on its page behind an alert (an unreadable .ods in the Drive of the Suite showed
+    // « Book1 », and a Save of it made a new .xlsx next to the file). The alert is still raised, for a page that does not
+    // listen (Neodesk's window); the Drive covers it with its card.
+    /// Web, when a page opens the workbooks: told when a file of [`Services::inbox`] did not open, with its name and the
+    /// reason. A file that asks for its password is not told, nor later when that dialog is cancelled.
+    pub host_open_failed: Option<HostOpenFailed>,
     // //// Neoffice — Get Data in an editor whose page opens the workbooks imports into the page's workbook (hosted.rs): the
     // browser's picker for a text, CSV or JSON file, whose bytes arrive in the inbox given, never in `inbox`.
     /// Web, when a page opens the workbooks: start an asynchronous pick of a file to import; the bytes arrive in the given inbox.
@@ -69,6 +76,9 @@ pub struct Services {
     // the pane then offers its microphone, where the browser can record. Off for every other build.
     pub nora_dictation: bool,
 }
+
+// //// Neoffice — `Services::host_open_failed`: (file name, reason). (An alias for clippy's `type_complexity`.)
+pub type HostOpenFailed = Box<dyn Fn(&str, &str)>;
 
 /// Shared queue of files read asynchronously (browser file picker, drag and drop).
 pub type Inbox = std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>;

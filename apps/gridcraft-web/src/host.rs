@@ -23,6 +23,10 @@
 //!   upstream's bridge does.
 //! - `gridcraft:dirty` (to the parent): `{ dirty }` whenever unsaved changes appear or go away.
 //! - `gridcraft:failed` (to the parent): `{ error }` when the app couldn't start.
+//! - `gridcraft:openFailed` (to the parent): `{ name, error }`. Neoffice's addition: the file the parent sent is not a
+//!   workbook the editor can read, with the reason (`Services::host_open_failed`). The parent says so instead of leaving
+//!   the blank workbook and its alert on its page. Not sent for a file that asks for its password, nor when that dialog
+//!   is later cancelled.
 //!
 //! The bridge exists only when the page asks for it with `?host=parent` and a page of its own
 //! origin frames it; otherwise the editor behaves as it always did. Only that parent is heard or
@@ -91,11 +95,12 @@ impl Naming {
 }
 
 /// Whether a workbook titled `title` is the file `name` opened: `file.open` titles it with the file's name,
-/// and an imported one (`.ods`, `.xls`, `.xlsb`) `<stem> (imported).xlsx`.
+/// and an imported one (`.ods`, `.xls`, `.xlsb`) `<stem> (imported).xlsx`, which the editor of a page makes
+/// `<stem>.xlsx` (`hosted.rs`).
 fn is_the_file(title: &str, name: &str) -> bool {
     let file = file_name(name);
     let stem = std::path::Path::new(&file).file_stem().and_then(|stem| stem.to_str()).unwrap_or("Book");
-    title == file || title == format!("{stem} (imported).xlsx")
+    title == file || title == format!("{stem} (imported).xlsx") || title == format!("{stem}.xlsx")
 }
 
 fn uids(app: &SheetApp) -> Vec<u64> {
@@ -317,6 +322,11 @@ mod wire {
             let import_ctx = ctx.clone();
             services.pick_import_async = Some(Box::new(move |imports: Inbox| pick_import(imports, import_ctx.clone())));
             self.listen(inbox, ctx);
+            // //// Neoffice — the page's file that did not open is said to the page (`Services::host_open_failed`).
+            let bridge = self.clone();
+            services.host_open_failed = Some(Box::new(move |name: &str, error: &str| {
+                bridge.send(&[("type", "gridcraft:openFailed".into()), ("name", name.into()), ("error", error.into())]);
+            }));
             let bridge = self.clone();
             services.download = Some(Box::new(move |path: &str, bytes: &[u8]| bridge.post_save(path, bytes)));
         }
@@ -795,6 +805,8 @@ mod tests {
         assert!(is_the_file("Ventes.xlsx", "Ventes.xlsx"));
         assert!(is_the_file("Ventes.xlsx", "/dossier/Ventes.xlsx"));
         assert!(is_the_file("Ventes (imported).xlsx", "Ventes.ods"));
+        // The title of an import in an editor a page hosts (`hosted.rs`).
+        assert!(is_the_file("Ventes.xlsx", "Ventes.ods"));
         assert!(!is_the_file("Book2", "Ventes.xlsx"));
         assert!(!is_the_file("Ventes.xlsx", "Autre.xlsx"));
     }

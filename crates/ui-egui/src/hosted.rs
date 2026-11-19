@@ -14,6 +14,11 @@
 //!   the browser's file picker, which would bring the file in as a second workbook beside the page's. Here it imports
 //!   the text, CSV or JSON file into the page's workbook, in a new sheet, as Excel's Get Data does.
 //!
+//! - **The page's file is not one.** The alert says so as it does without a page, and the page hears of it
+//!   (`Services::host_open_failed`) to show its own card over the blank workbook; what the importers would read as a
+//!   sheet of garbage (`io::not_text_nor_workbook`) is refused the same way.
+//! - **The page's import** (`.xls`, `.xlsb`, `.ods`) is titled `<stem>.xlsx`, the name its first save takes in the page.
+//!
 //! Without a hosting page nothing here runs: the editor behaves as upstream's.
 
 use std::hash::{Hash as _, Hasher as _};
@@ -43,6 +48,19 @@ fn sheet_name(file: &str) -> String {
     stem.chars().take(MAX_SHEET_NAME_CHARS).collect()
 }
 
+/// `file.open` titles an import `<stem> (imported).xlsx`: the title for a page, which names what its save makes `<stem>.xlsx`
+/// and says so above the editor. `None` when the workbook keeps its title: `title` is not the one `file.open` gave an
+/// import of `name` (a file really called that), or `<stem>.xlsx` is the file's own name, as for a workbook of another
+/// format named `.xlsx`: its Save under that name would reach the page as a save over the original, which an import
+/// never replaces.
+fn title_for_the_page(name: &str, title: &str) -> Option<String> {
+    let path = std::path::Path::new(name);
+    let stem = path.file_stem()?.to_str()?;
+    let plain = format!("{stem}.xlsx");
+    let own_name = path.file_name()?.to_str()?;
+    (title == format!("{stem} (imported).xlsx") && !plain.eq_ignore_ascii_case(own_name)).then_some(plain)
+}
+
 impl SheetApp {
     /// Whether `file.open` with these `params` opens the page's password-protected workbook with the password the person
     /// typed: the one open the guard of `host_owns_documents` lets through besides the inbox's own.
@@ -61,8 +79,8 @@ impl SheetApp {
 
     /// After a command [`SheetApp::run`] ran: once a `file.open` succeeds the password dialog has nothing left to let
     /// through, and when that open was the page's workbook with its password (`protected`), the workbook it opened is
-    /// the one that is never saved back to the page.
-    pub(crate) fn after_a_hosted_open(&mut self, id: &str, protected: bool, opened: bool) {
+    /// the one that is never saved back to the page. `name` is the file `file.open` was given.
+    pub(crate) fn after_a_hosted_open(&mut self, id: &str, protected: bool, opened: bool, name: Option<&str>) {
         if id != "file.open" || !opened {
             return;
         }
@@ -70,6 +88,32 @@ impl SheetApp {
         if protected {
             self.host_encrypted_original = self.session.active().map(|d| d.uid);
         }
+        if self.services.host_owns_documents {
+            self.title_the_pages_import(name.unwrap_or_default());
+        }
+    }
+
+    /// The title of the page's import, as the page says it will save it ([`title_for_the_page`]).
+    fn title_the_pages_import(&mut self, name: &str) {
+        if let Some(doc) = self.session.active_mut()
+            && let Some(title) = title_for_the_page(name, &doc.title)
+        {
+            doc.title = title;
+        }
+    }
+
+    /// A file from the page that holds neither a workbook nor text is not opened: the alert says why, and the page hears
+    /// of it. Whether that was so; without a hosting page the file goes on to `file.open`, as upstream has it.
+    pub(crate) fn refuses_what_is_no_workbook(&mut self, name: &str, bytes: &[u8]) -> bool {
+        if !self.services.host_owns_documents {
+            return false;
+        }
+        let Some(reason) = gridcraft_engine::io::not_text_nor_workbook(name, bytes) else { return false };
+        if let Some(tell) = &self.services.host_open_failed {
+            tell(name, &reason);
+        }
+        self.message = Some(("GridCraft".into(), reason));
+        true
     }
 
     /// Whether the active workbook is the page's, opened with its password: GridCraft cannot write it encrypted, so
@@ -132,6 +176,18 @@ mod tests {
         assert_eq!(sheet_name("folder/Report 2026.tsv"), "Report 2026");
         assert_eq!(sheet_name(&format!("{}.csv", "x".repeat(40))).chars().count(), MAX_SHEET_NAME_CHARS);
         assert_eq!(sheet_name(".csv"), ".csv", "a name that is all extension keeps it");
+    }
+
+    #[test]
+    fn an_import_takes_the_name_its_save_makes_unless_that_is_the_file_itself() {
+        assert_eq!(title_for_the_page("Budget 2027.xls", "Budget 2027 (imported).xlsx").as_deref(), Some("Budget 2027.xlsx"));
+        assert_eq!(title_for_the_page("Budget.ods", "Budget (imported).xlsx").as_deref(), Some("Budget.xlsx"));
+        // ODS or XLS bytes in a file named .xlsx: a save under that name would overwrite it in the page.
+        assert_eq!(title_for_the_page("Budget.xlsx", "Budget (imported).xlsx"), None);
+        assert_eq!(title_for_the_page("BUDGET.XLSX", "BUDGET (imported).xlsx"), None);
+        // A file really called that, and a title that is not an import's.
+        assert_eq!(title_for_the_page("Report (imported).xlsx", "Report (imported).xlsx"), None);
+        assert_eq!(title_for_the_page("Liste.csv", "Liste.csv"), None);
     }
 
     #[test]

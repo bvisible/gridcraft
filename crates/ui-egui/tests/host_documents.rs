@@ -236,6 +236,135 @@ fn the_pages_password_protected_workbook_opens_with_its_password() {
     assert_eq!(h.state().session.documents().len(), 1);
 }
 
+/// What the page was told of its files that did not open: (name, reason).
+type Told = Arc<Mutex<Vec<(String, String)>>>;
+
+fn telling(inbox: &Inbox, told: &Told) -> Services {
+    let told = told.clone();
+    Services {
+        host_open_failed: Some(Box::new(move |name: &str, reason: &str| told.lock().unwrap().push((name.to_string(), reason.to_string())))),
+        ..hosted(inbox, &Handed::default())
+    }
+}
+
+/// Bytes no reader takes for a workbook or for text: NULs and control characters from the start.
+const JUNK: &[u8] = &[0xA5, 0x4D, 0xCA, 0x18, 0x00, 0x25, 0x30, 0xBB, 0x1D, 0x00, 0x01, 0x02, 0xFF, 0xFE, 0x00, 0x07, 0x08, 0x00];
+
+/// A file of the page that is no workbook: the page hears of it, with its name and the reason. The editor stays on its
+/// blank workbook, with the alert for a page that does not listen (the Drive covers both and refuses a save).
+#[test]
+fn a_file_of_the_page_that_is_no_workbook_is_told_to_the_page() {
+    for name in ["Casse.ods", "Casse.xlsb", "Casse.xlsx", "Casse.xls", "Casse.csv", "Casse.tsv"] {
+        let (inbox, told) = (Inbox::default(), Told::default());
+        let mut h = harness(telling(&inbox, &told));
+        inbox.lock().unwrap().push((name.into(), JUNK.to_vec()));
+        h.run_steps(3);
+        let heard = told.lock().unwrap().clone();
+        assert_eq!(heard.len(), 1, "{name}: {heard:?}");
+        assert_eq!(heard[0].0, name);
+        assert!(!heard[0].1.trim().is_empty(), "{name}: the reason is given");
+        assert!(h.state().message.as_ref().is_some_and(|(_, m)| m.contains(name)), "{name}: {:?}", h.state().message);
+        assert_eq!(h.state().session.documents().len(), 1, "{name}");
+        let doc = h.state().session.active().unwrap();
+        assert!(doc.wb.sheets.iter().all(|sheet| sheet.cells.is_empty()) && !doc.is_dirty(), "{name}: nothing of the file went in");
+    }
+}
+
+/// What the importers do read stays readable from a page: text under a text name or an .xls name (a web app's export),
+/// an empty text file. Only an empty .xls, which holds no workbook, is refused with the binary ones.
+#[test]
+fn text_and_an_empty_text_file_still_open_from_a_page() {
+    for (name, bytes) in
+        [("Liste.csv", &b"a;b\n1;2\n"[..]), ("Liste.tsv", b"a\tb\n1\t2\n"), ("Export.xls", b"a\tb\n1\t2\n"), ("Vide.csv", b""), ("Vide.tsv", b"")]
+    {
+        let (inbox, told) = (Inbox::default(), Told::default());
+        let mut h = harness(telling(&inbox, &told));
+        inbox.lock().unwrap().push((name.into(), bytes.to_vec()));
+        h.run_steps(3);
+        assert!(told.lock().unwrap().is_empty(), "{name}: {:?}", told.lock().unwrap());
+        assert!(h.state().message.is_none(), "{name}: {:?}", h.state().message);
+    }
+    let (inbox, told) = (Inbox::default(), Told::default());
+    let mut h = harness(telling(&inbox, &told));
+    inbox.lock().unwrap().push(("Vide.xls".into(), Vec::new()));
+    h.run_steps(3);
+    assert_eq!(told.lock().unwrap().len(), 1, "an empty .xls is no workbook");
+}
+
+/// A workbook that opens, and one that asks for its password, are not failures.
+#[test]
+fn a_workbook_that_opens_or_asks_for_its_password_is_not_told() {
+    let (inbox, told) = (Inbox::default(), Told::default());
+    let mut h = harness(telling(&inbox, &told));
+    inbox.lock().unwrap().push(("Secret.xlsx".into(), encrypted_bytes()));
+    h.run_steps(3);
+    assert_eq!(dialog(&h).as_deref(), Some("openPassword"));
+    assert!(told.lock().unwrap().is_empty());
+}
+
+/// Without a hosting page the alert is upstream's, and binary bytes under a text name are read as text as upstream has it.
+#[test]
+fn without_a_page_the_editor_says_it_itself() {
+    let inbox = Inbox::default();
+    let mut h = harness(Services { inbox: Some(inbox.clone()), ..Default::default() });
+    inbox.lock().unwrap().push(("Casse.ods".into(), JUNK.to_vec()));
+    h.run_steps(3);
+    assert!(h.state().message.as_ref().is_some_and(|(_, m)| m.contains("Casse.ods")), "{:?}", h.state().message);
+    h.state_mut().message = None;
+    inbox.lock().unwrap().push(("Casse.csv".into(), JUNK.to_vec()));
+    h.run_steps(3);
+    assert!(h.state().message.is_none(), "{:?}", h.state().message);
+    assert!(h.state().session.active().unwrap().display_title().contains("Casse"), "read as text");
+}
+
+/// The page's import is titled as the page says the save will name it (`Budget 2027.xlsx`), not `… (imported).xlsx`;
+/// a file really called so keeps its name, and without a page the title is upstream's.
+#[test]
+fn an_import_of_the_page_bears_the_name_its_save_makes() {
+    let title = |h: &Harness| h.state().session.active().unwrap().display_title();
+    let inbox = Inbox::default();
+    let mut h = harness(hosted(&inbox, &Handed::default()));
+    inbox.lock().unwrap().push(("Budget 2027.xls".into(), b"a\tb\n1\t2\n".to_vec()));
+    h.run_steps(3);
+    assert_eq!(title(&h), "Budget 2027.xlsx");
+
+    let inbox = Inbox::default();
+    let mut h = harness(hosted(&inbox, &Handed::default()));
+    inbox.lock().unwrap().push(("Report (imported).xlsx".into(), b"a,b\n1,2\n".to_vec()));
+    h.run_steps(3);
+    assert_eq!(title(&h), "Report (imported).xlsx", "that is the file's own name");
+
+    let inbox = Inbox::default();
+    let mut h = harness(Services { inbox: Some(inbox.clone()), ..Default::default() });
+    inbox.lock().unwrap().push(("Budget 2027.xls".into(), b"a\tb\n1\t2\n".to_vec()));
+    h.run_steps(3);
+    assert_eq!(title(&h), "Budget 2027 (imported).xlsx");
+}
+
+/// A notice longer than the window wraps inside it: its end and its Dismiss button stay on screen (the French sentence of
+/// an import ran off the window's edge), and the bar is as tall as its lines, then one line again for a short notice.
+#[test]
+fn a_long_notice_stays_inside_the_window() {
+    let notice = |text: &str| Some(gridcraft_ui_egui::Notice { text: text.to_string(), kind: gridcraft_ui_egui::NoticeKind::Info, action: None });
+    let grid_top = |h: &Harness| h.state().grid.rect.map(|r| r.min.y).unwrap_or_default();
+    let mut h = harness(Services::default());
+    let bare = grid_top(&h);
+    let text = "Importé depuis un classeur Excel 97-2003 (.xls) : ".repeat(6);
+    h.state_mut().notice = notice(text.trim());
+    h.run_steps(4);
+    let window = h.ctx.content_rect();
+    let label = h.get_by_label_contains("Importé depuis").rect();
+    assert!(label.max.x <= window.max.x && label.min.x >= window.min.x, "{label:?} in {window:?}");
+    assert!(label.height() > 24.0, "it takes more than one line: {label:?}");
+    let dismiss = h.get_by_label("Dismiss").rect();
+    assert!(dismiss.max.x <= window.max.x && dismiss.min.x >= label.max.x - 1.0, "{dismiss:?} after {label:?}");
+    assert!(grid_top(&h) - bare > 28.0, "the bar grows with its sentence: {}", grid_top(&h) - bare);
+
+    h.state_mut().notice = notice("Enregistré.");
+    h.run_steps(4);
+    assert!((grid_top(&h) - bare - 20.0).abs() < 1.0, "one line again: {}", grid_top(&h) - bare);
+}
+
 /// Data › Get Data in an editor whose page opens the workbooks imports the file into the page's workbook, in a new
 /// sheet named after it, as Excel's Get Data does, instead of opening it as a second workbook beside the page's. Its
 /// separator is found as File › Open finds a CSV's. Without a page, Get Data opens the file as upstream's does.

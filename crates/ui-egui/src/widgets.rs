@@ -647,32 +647,46 @@ pub fn notice_bar(app: &mut SheetApp, ui: &mut Ui) {
     };
     let mut dismiss = false;
     let mut action: Option<(String, String)> = None;
-    egui::Panel::top("notice_bar").frame(egui::Frame::NONE.fill(bg).inner_margin(egui::Margin::symmetric(12, 0))).show(ui, |ui| {
+    // //// Neoffice — the sentence wraps in the width the icon and the buttons leave, and the bar is as tall as it needs:
+    // on one line, a notice longer than the window (the French sentences of an import) ran off its edge, Dismiss with it.
+    // The height is set here because a top panel keeps the height of its last frame: a bar grown once would never shrink.
+    let font = theme::ui_font(12.5);
+    let spacing = ui.spacing().item_spacing.x;
+    let action_width = notice.action.as_ref().map_or(0.0, |(label, _)| {
+        ui.painter().layout_no_wrap(label.clone(), font.clone(), t.text).size().x + 2.0 * ui.spacing().button_padding.x + spacing
+    });
+    let room = (ui.available_width() - 24.0 - 22.0 - 20.0 - 2.0 * spacing - action_width).max(80.0);
+    let text_height = ui.painter().layout(notice.text.clone(), font.clone(), t.text, room).size().y;
+    let height = (text_height + 4.0).max(20.0);
+    egui::Panel::top("notice_bar").exact_size(height).frame(egui::Frame::NONE.fill(bg).inner_margin(egui::Margin::symmetric(12, 0))).show(ui, |ui| {
         // Bottom border as a 1px strip spanning the bar.
         let bar = ui.max_rect();
         ui.painter().rect_stroke(bar, 0.0, Stroke::new(1.0, border), StrokeKind::Inside);
-        ui.horizontal_centered(|ui| {
-            let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
-            icons::paint(
-                ui.painter(),
-                r,
-                match notice.kind {
-                    crate::NoticeKind::Warning => Icon::Lock,
-                    crate::NoticeKind::Info => Icon::Note,
-                },
-                border,
-            );
-            ui.add_space(6.0);
-            ui.label(egui::RichText::new(&notice.text).font(theme::ui_font(12.5)).color(t.text));
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if icon_button(ui, Icon::Close, t.text_dim, "Dismiss", vec2(20.0, 20.0)).clicked() {
-                    dismiss = true;
-                }
-                if let Some((label, dialog)) = &notice.action
-                    && ui.button(egui::RichText::new(label).font(theme::ui_font(12.5))).clicked()
-                {
-                    action = Some((label.clone(), dialog.clone()));
-                }
+        // //// Neoffice — the buttons are placed first, the sentence after them, in `room` (see above).
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if icon_button(ui, Icon::Close, t.text_dim, "Dismiss", vec2(20.0, 20.0)).clicked() {
+                dismiss = true;
+            }
+            if let Some((label, dialog)) = &notice.action
+                && ui.button(egui::RichText::new(label).font(theme::ui_font(12.5))).clicked()
+            {
+                action = Some((label.clone(), dialog.clone()));
+            }
+            ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
+                icons::paint(
+                    ui.painter(),
+                    r,
+                    match notice.kind {
+                        crate::NoticeKind::Warning => Icon::Lock,
+                        crate::NoticeKind::Info => Icon::Note,
+                    },
+                    border,
+                );
+                ui.add_space(6.0);
+                ui.allocate_ui(vec2(room, height), |ui| {
+                    ui.add(egui::Label::new(egui::RichText::new(&notice.text).font(font.clone()).color(t.text)).wrap());
+                });
             });
         });
     });

@@ -58,6 +58,22 @@ pub const WRONG_PASSWORD: &str = "The password is incorrect.";
 /// The first open warning of a workbook decrypted with its password.
 pub const DECRYPTED_NOTICE: &str = "This workbook was password-protected. GridCraft saves it without the password.";
 
+// //// Neoffice — added function (no upstream equivalent). Upstream reads whatever is not a package as text: binary bytes
+// under an .xls, .csv or .tsv name open as a sheet of garbage (and an empty .xls as a blank workbook), and Excel does much
+// the same. A page that hosts the editor (the Drive of the Suite) would then offer to save that as a new .xlsx, so it asks
+// here first. `sniff` is the importers' own test for text; everything it takes for text still opens, an .xls too
+// (a web app's export), and so does an empty .csv or .tsv.
+/// Why `bytes` can't be the file `name` says, when its importer would read them as text all the same: `None` otherwise.
+pub fn not_text_nor_workbook(name: &str, bytes: &[u8]) -> Option<String> {
+    let binary = gridcraft_xlsx::sniff(bytes) == gridcraft_xlsx::Format::Unknown;
+    let refused = match FileKind::from_path(name)? {
+        FileKind::Xls => binary,
+        FileKind::Csv | FileKind::Tsv => binary && !bytes.is_empty(),
+        _ => false,
+    };
+    refused.then(|| format!("We can't open '{name}': it holds neither a workbook nor text."))
+}
+
 /// Parses a file's bytes into a workbook. `name` picks the format by extension when the bytes
 /// don't say. An encrypted workbook needs [`open_bytes_with_password`].
 pub fn open_bytes(name: &str, bytes: &[u8]) -> Result<(Workbook, Vec<String>)> {

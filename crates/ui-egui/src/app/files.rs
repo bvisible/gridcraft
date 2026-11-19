@@ -98,6 +98,10 @@ impl SheetApp {
             .map(|i| std::mem::take(&mut *i.lock().unwrap_or_else(std::sync::PoisonError::into_inner)))
             .unwrap_or_default();
         for (name, bytes) in arrived {
+            // //// Neoffice — bytes that are neither a workbook nor text, from a hosting page: nothing opens (hosted.rs).
+            if self.refuses_what_is_no_workbook(&name, &bytes) {
+                continue;
+            }
             let b64 = gridcraft_engine::io::base64_encode(&bytes);
             // //// Neoffice — the file the hosting page hands over is the one open the guard lets through.
             self.host_switch_allowed = true;
@@ -115,7 +119,13 @@ impl SheetApp {
                     self.remember_the_pages_protected_workbook(&b64);
                     self.open_dialog("openPassword", json!({"name": name, "base64": b64}));
                 }
-                Err(e) => self.message = Some(("GridCraft".into(), clean_error(&e))),
+                Err(e) => {
+                    // //// Neoffice — and a hosting page that listens is told, to show its own card over the blank workbook.
+                    if let Some(tell) = &self.services.host_open_failed {
+                        tell(&name, &clean_error(&e));
+                    }
+                    self.message = Some(("GridCraft".into(), clean_error(&e)))
+                }
             }
             self.after_engine();
         }

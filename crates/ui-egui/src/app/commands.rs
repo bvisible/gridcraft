@@ -11,13 +11,15 @@ impl SheetApp {
         // arrives through the inbox, which lifts the guard for it, and so does the password the person types
         // for it when it has one (hosted.rs).
         let protected = self.opens_the_pages_protected_workbook(id, &params);
+        // //// Neoffice — the name of the file a `file.open` opens, for the title of the page's import (hosted.rs).
+        let opened_name = (id == "file.open").then(|| params.get("name").and_then(Json::as_str).map(str::to_string)).flatten();
         if self.services.host_owns_documents && !self.host_switch_allowed && crate::hidden_from_a_host(id) && !protected {
             return Err(self.ui.language.tr("This workbook is opened from the page that hosts the editor.").to_string());
         }
         let r = self.run_command(id, params);
         // //// Neoffice — the page's workbook is open: its password dialog has nothing left to let through, and when the
-        // password opened it, it is never saved back to the page (hosted.rs).
-        self.after_a_hosted_open(id, protected, r.is_ok());
+        // password opened it, it is never saved back to the page; an import is titled as its save will be (hosted.rs).
+        self.after_a_hosted_open(id, protected, r.is_ok(), opened_name.as_deref());
         // This copy leaves the system clipboard alone: note what it holds, so Paste can tell
         // that GridCraft's copy is newer while that text is still there.
         if matches!(id, "edit.copy" | "edit.cut") && r.is_ok() {
