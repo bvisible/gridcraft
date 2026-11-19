@@ -40,6 +40,9 @@ zbus = "=5.19.0"
 egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
 epaint_default_fonts = { workspace = true }
 gridcraft-xlsx = { workspace = true, features = ["test-support"] }
+# //// Neoffice — the Nora panel's microphone pretended outside a browser, for the tests of a pane that gives a dictation up
+# when it closes (nora_pane.rs); a dev-dependency's feature, never a build's.
+craft-nora-ui = { workspace = true, features = ["test-support"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 craft-update = { workspace = true }
